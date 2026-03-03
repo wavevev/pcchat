@@ -7,7 +7,6 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
-    /* ========= Font (iPad/Safari 안정: woff2 우선, woff fallback) ========= */
     @font-face{
       font-family:"DungGeunMo";
       src:
@@ -19,16 +18,18 @@
     :root{
       --bg:#00009b;
       --fg:#ffffff;
-      --hi:#ffff66;     /* 노란 강조 (남은 시간, 시스템) */
-      --cyan:#00ffff;   /* 공지 */
+      --hi:#ffff66;
+      --cyan:#00ffff;
       --scan:rgba(255,255,255,0.05);
+
+      /* 살짝 축소 느낌 */
+      --base: 20px;
 
       --topbar-h:56px;
       --inputbar-h:92px;
 
-      /* iOS 키보드 대응용(스크립트가 갱신) */
       --vvh: 100vh;
-      --kb: 0px; /* keyboard overlap */
+      --kb: 0px;
     }
 
     html,body{
@@ -38,18 +39,17 @@
       background:var(--bg);
       color:var(--fg);
       font-family:"DungGeunMo", monospace;
+      font-size: var(--base);
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
     }
-
-    /* ✅ 입력/버튼 폰트 빠지는 문제 방지 */
     input, button, textarea, select{
       font-family: inherit;
       font-size: inherit;
       color: var(--fg);
     }
 
-    /* ========= CRT scanline + 미세 깜빡임 ========= */
+    /* CRT */
     body::after{
       content:"";
       position:fixed;
@@ -72,7 +72,7 @@
       100%{opacity:.90;}
     }
 
-    /* ========= Login ========= */
+    /* ===== Login ===== */
     #loginScreen{
       height: var(--vvh);
       display:flex;
@@ -82,25 +82,20 @@
       box-sizing:border-box;
     }
     .loginBox{
-      width: min(720px, 100%);
+      width: min(560px, 100%); /* ✅ 좌우 너무 긴 거 줄임 */
       border: 2px solid var(--fg);
-      padding: 34px 34px 30px;
+      padding: 30px 30px 26px;
       box-sizing:border-box;
       text-align:center;
     }
     .loginTitle{
       line-height: 1.9;
       font-size: 22px;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
       letter-spacing: .5px;
     }
-    .loginRow{
-      display:flex;
-      justify-content:center;
-      margin-top: 12px;
-    }
     #nickname{
-      width: min(520px, 100%);
+      width: min(460px, 100%);
       border: 2px solid var(--fg);
       background: var(--bg);
       padding: 14px 14px;
@@ -110,16 +105,16 @@
       text-align:center;
     }
     #enterBtn{
-      margin-top: 20px;
+      margin-top: 18px;
       border: 2px solid var(--fg);
       background: var(--bg);
-      padding: 10px 30px; /* 캡처처럼 버튼 짧게 */
+      padding: 10px 30px;
       cursor:pointer;
       font-size: 22px;
     }
     #enterBtn:active{ transform: translateY(1px); }
 
-    /* ========= Chat Layout (full screen) ========= */
+    /* ===== Chat ===== */
     #chatScreen{
       display:none;
       height: var(--vvh);
@@ -128,11 +123,14 @@
       box-sizing:border-box;
     }
 
-    /* top bar */
+    /* ✅ 상단바 라인 제거: border 없음 */
     .topbarWrap{
-      border-bottom: 2px solid var(--fg);
-      box-shadow: inset 0 -10px 0 rgba(0,0,0,0.15);
+      /* border-bottom 제거 */
+      background: var(--bg);
+      /* ✅ 상단 음영 (요청한 이전 캡처 느낌) */
+      box-shadow: inset 0 -12px 0 rgba(0,0,0,0.22);
     }
+
     .topbar{
       height: var(--topbar-h);
       display:grid;
@@ -143,22 +141,15 @@
       font-size: 24px;
       letter-spacing: 1px;
     }
-    .topLeft{
-      justify-self:start;
-    }
+    .topLeft{ justify-self:start; }
     .topCenter{
       justify-self:center;
       font-weight:700;
       letter-spacing: 4px;
     }
-    .topRight{
-      justify-self:end;
-    }
-    .timer{
-      color: var(--hi);
-    }
+    .topRight{ justify-self:end; }
+    .timer{ color: var(--hi); }
 
-    /* messages area */
     #chatWrap{
       height: calc(var(--vvh) - var(--topbar-h) - var(--inputbar-h) - var(--kb));
       overflow:auto;
@@ -174,11 +165,10 @@
     .system{ color: var(--hi); }
     .chat{ color: var(--fg); }
 
-    /* input bar */
+    /* ✅ 하단 흰 라인 제거: border-top 제거 */
     .inputbar{
       height: calc(var(--inputbar-h) + var(--kb));
       box-sizing:border-box;
-      border-top: 2px solid var(--fg);
       display:grid;
       grid-template-columns: 1fr auto;
       gap: 16px;
@@ -201,17 +191,15 @@
     }
     #sendBtn:active{ transform: translateY(1px); }
 
-    /* ========= Responsive (mobile/iPad) ========= */
     @media (max-width: 700px){
-      .loginBox{ padding: 28px 22px 24px; }
+      :root{ --base:18px; --inputbar-h:84px; --topbar-h:52px; }
+      .loginBox{ padding: 26px 20px 22px; }
       .loginTitle{ font-size: 20px; }
-      #nickname{ font-size: 20px; }
-      #enterBtn{ font-size: 20px; }
-
+      #nickname, #enterBtn{ font-size: 20px; }
       .topbar{ font-size: 20px; }
       #chatWrap{ font-size: 18px; padding: 16px; }
       #msgInput, #sendBtn{ font-size: 18px; }
-      :root{ --inputbar-h: 84px; --topbar-h: 52px; }
+      .inputbar{ gap: 12px; }
     }
   </style>
 </head>
@@ -224,9 +212,8 @@
         X와의 채팅을 시작합니다.<br/>
         당신의 이름은?
       </div>
-      <div class="loginRow">
-        <input id="nickname" placeholder="이름을" autocomplete="off" />
-      </div>
+      <!-- ✅ placeholder(이름을) 삭제 -->
+      <input id="nickname" autocomplete="off" />
       <button id="enterBtn" type="button">입장</button>
     </div>
   </div>
@@ -252,7 +239,6 @@
   <script>
     const socket = io();
 
-    // elements
     const loginScreen = document.getElementById("loginScreen");
     const chatScreen  = document.getElementById("chatScreen");
     const nickEl      = document.getElementById("nickname");
@@ -265,18 +251,15 @@
     const msgInput    = document.getElementById("msgInput");
     const sendBtn     = document.getElementById("sendBtn");
 
-    // state
     let nickname = "";
     let timeLeft = 120;
     let timerId = null;
 
-    // ===== iOS keyboard / viewport safe =====
+    // viewport / iOS keyboard
     function updateViewportVars(){
       const vv = window.visualViewport;
       const height = vv ? vv.height : window.innerHeight;
       document.documentElement.style.setProperty("--vvh", height + "px");
-
-      // 키보드가 올라오면 visualViewport.height가 줄어듦 -> 그 차이를 kb로
       const kb = Math.max(0, (window.innerHeight - height));
       document.documentElement.style.setProperty("--kb", kb + "px");
     }
@@ -287,7 +270,7 @@
     }
     updateViewportVars();
 
-    // ===== Sounds (로그인음 유지 + 채팅은 soft 딩 고정) =====
+    // sounds (login 유지, send=soft 딩)
     let audioCtx = null;
     function getCtx(){
       if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -305,17 +288,23 @@
     function playSendSound(){
       const ctx = getCtx();
       const o = ctx.createOscillator();
-      o.type = "sine";          // soft
-      o.frequency.value = 500;  // 딩
+      o.type = "sine";
+      o.frequency.value = 500;
       o.connect(ctx.destination);
       o.start();
       setTimeout(()=>o.stop(),90);
     }
 
-    // ===== UI helpers =====
+    function pad2(n){ return String(n).padStart(2,"0"); }
+    function nowHM(){
+      const d = new Date();
+      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    }
+
     function scrollBottom(){
       chatWrap.scrollTop = chatWrap.scrollHeight;
     }
+
     function addLine(text, cls){
       const div = document.createElement("div");
       div.className = "line " + (cls || "");
@@ -323,12 +312,8 @@
       chatWrap.appendChild(div);
       scrollBottom();
     }
-    function addChatLine(time, nick, msg){
-      // 캡처처럼: [19:50] 관리자 : ㅇㅇㅇ
-      addLine(`[${time}] ${nick} : ${msg}`, "chat");
-    }
 
-    // ===== Timer =====
+    // timer
     function startTimer(){
       timerEl.textContent = String(timeLeft);
       if(timerId) clearInterval(timerId);
@@ -344,13 +329,7 @@
       }, 1000);
     }
 
-    function pad2(n){ return String(n).padStart(2,"0"); }
-    function nowHM(){
-      const d = new Date();
-      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-    }
-
-    // ===== Enter =====
+    // enter
     function enter(){
       const raw = nickEl.value.trim();
       if(!raw) return;
@@ -362,10 +341,9 @@
 
       socket.emit("join", nickname);
 
-      // 공지 (캡처처럼)
-      addLine(`[공지] X와의 채팅을 시작합니다. 2분 동안 X에게 질문을 남겨주세요.`, "notice");
+      // ✅ 공지 “프론트에서 찍지 않음”
+      // (서버에서 notice가 오면 그거만 출력하게 해서 이중 출력 제거)
 
-      // 타이머
       timeLeft = 120;
       msgInput.disabled = false;
       sendBtn.disabled = false;
@@ -376,7 +354,7 @@
       updateViewportVars();
     }
 
-    // ===== Send (IME 엔터 깨짐/중복 방지 포함) =====
+    // send (IME 이슈 방지)
     let isComposing = false;
     msgInput.addEventListener("compositionstart", ()=> isComposing = true);
     msgInput.addEventListener("compositionend", ()=> isComposing = false);
@@ -385,10 +363,9 @@
       const msg = msgInput.value.trim();
       if(!msg || msgInput.disabled) return;
 
-      // 내 화면 즉시 표시
-      addChatLine(nowHM(), nickname, msg);
-
+      // ✅ 일반 채팅도 “프론트 즉시 출력” 제거 (이중 출력 해결)
       socket.emit("chat", msg);
+
       msgInput.value = "";
       playSendSound();
     }
@@ -410,21 +387,22 @@
       }
     });
 
-    // ===== server events (네 server.js 형태 기준) =====
+    // server events
     socket.on("count", (n)=> { countEl.textContent = String(n); });
 
     socket.on("system", (msg)=>{
-      // 캡처처럼: [19:50] ▶ 관리자님이 접속했습니다.
+      // ✅ 삼각형 2개 -> 1개로 (서버 msg 그대로 사용)
       addLine(`[${nowHM()}] ▶ ${msg}`, "system");
     });
 
     socket.on("notice", (nick, msg)=>{
+      // ✅ 공지는 서버에서 오는 것만 1번 출력
       addLine(`[공지] ${nick} ${msg}`, "notice");
     });
 
     socket.on("chat", (nick, msg, time)=>{
-      // 서버가 time을 주면 그걸 사용(없으면 nowHM)
-      addChatLine(time || nowHM(), nick, msg);
+      // ✅ 채팅은 서버 출력만 1번
+      addLine(`[${time || nowHM()}] ${nick} : ${msg}`, "chat");
     });
   </script>
 </body>
