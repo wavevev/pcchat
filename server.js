@@ -38,3 +38,11 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log("Server running");
 });
+
+// ===============================
+// 📁 server.js (관리자 권한 + 타이머 연동)
+// ===============================
+
+ translator to=canmore.update_textdoc 
+
+ const ADMIN_NAME = "9996, 백선우, 이세웅";
