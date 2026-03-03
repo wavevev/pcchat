@@ -2,62 +2,72 @@
 <html>
 <head>
 <meta charset="UTF-8" />
-<title>PC통신 채팅</title>
+<title>9996</title>
 <script src="/socket.io/socket.io.js"></script>
+
 <style>
+
+/* ===== 둥근모꼴 폰트 ===== */
+@font-face {
+  font-family: 'DungGeunMo';
+  src: url('./fonts/DungGeunMo.woff') format('woff');
+}
 
 body {
   margin:0;
   background:#00009b;
-  font-family:'Courier New', monospace;
+  font-family:'DungGeunMo', monospace;
   color:white;
+}
+
+/* ===== 상단 타이틀 ===== */
+.header {
+  background:#00009b;
+  border-bottom:3px solid white;
+  padding:12px 20px;
+  font-size:18px;
 }
 
 .box {
   border:3px solid white;
-  padding:40px 50px;
+  padding:20px 25px; /* 여백 줄임 */
 }
 
+/* ===== 로그인 ===== */
 #loginBox {
-  width:600px;
-  margin:120px auto;
+  width:420px;
+  margin:100px auto;
   text-align:center;
-  line-height:1.8;
+  line-height:2;
 }
 
 #chatBox {
   display:none;
   width:85%;
-  max-width:950px;
-  margin:40px auto;
-}
-
-#asciiHeader {
-  white-space:pre;
-  margin-bottom:20px;
-  font-size:14px;
+  max-width:900px;
+  margin:30px auto;
 }
 
 #messages {
   height:420px;
   overflow-y:auto;
   margin:20px 0;
-  line-height:1.6;
+  line-height:1.7;
 }
 
-input, select {
+input {
   background:#00009b;
   border:2px solid white;
   color:white;
-  padding:8px;
-  font-family:'Courier New', monospace;
+  padding:6px;
+  font-family:'DungGeunMo', monospace;
 }
 
 button {
   background:#00009b;
   border:2px solid white;
   color:white;
-  padding:6px 18px;
+  padding:5px 15px;
   cursor:pointer;
 }
 
@@ -69,28 +79,22 @@ button {
 </head>
 <body>
 
+<div class="header">
+  9996 통신망 접속
+</div>
+
 <div id="loginBox" class="box">
-  <h2>X와의 채팅을 시작합니다.<br/>당신의 이름은?</h2>
-  <input id="nickname" /><br/><br/>
-
-  효과음 선택:
-  <select id="soundSelect">
-    <option value="classic">Classic 삐빅</option>
-    <option value="soft">Soft 딩</option>
-    <option value="retro">Retro 노이즈</option>
-  </select>
+  <div>
+    X와의 채팅을 시작합니다.<br/>
+    당신의 이름은?
+  </div>
+  <br/>
+  <input id="nickname" />
   <br/><br/>
-
   <button onclick="join()">입장</button>
 </div>
 
 <div id="chatBox" class="box">
-
-<div id="asciiHeader">
-+--------------------------------------------------+
-|              PC-COMMUNICATION 1994              |
-+--------------------------------------------------+
-</div>
 
 접속 인원: <span id="count">0</span>
 
@@ -103,13 +107,11 @@ button {
 
 <script>
 const socket = io();
-let soundMode = "classic";
 
+/* ===== 로그인 ===== */
 function join(){
   const nick = document.getElementById("nickname").value;
   if(!nick) return;
-
-  soundMode = document.getElementById("soundSelect").value;
 
   socket.emit("join", nick);
   document.getElementById("loginBox").style.display="none";
@@ -118,9 +120,11 @@ function join(){
   playLoginSound();
 }
 
+/* ===== 채팅 ===== */
 function send(){
   const input = document.getElementById("msgInput");
   if(!input.value) return;
+
   socket.emit("chat", input.value);
   input.value="";
   playChatSound();
@@ -155,6 +159,8 @@ socket.on("count", (num)=>{
   count.innerText = num;
 });
 
+/* ===== 효과음 ===== */
+
 function playLoginSound(){
   const ctx = new (window.AudioContext||window.webkitAudioContext)();
   const o = ctx.createOscillator();
@@ -165,26 +171,15 @@ function playLoginSound(){
   setTimeout(()=>o.stop(),120);
 }
 
+/* soft 딩으로 고정 */
 function playChatSound(){
   const ctx = new (window.AudioContext||window.webkitAudioContext)();
   const o = ctx.createOscillator();
-
-  if(soundMode === "classic"){
-    o.type="square";
-    o.frequency.value=700;
-  }
-  else if(soundMode === "soft"){
-    o.type="sine";
-    o.frequency.value=500;
-  }
-  else{
-    o.type="sawtooth";
-    o.frequency.value=600;
-  }
-
+  o.type="sine";
+  o.frequency.value=500;
   o.connect(ctx.destination);
   o.start();
-  setTimeout(()=>o.stop(),80);
+  setTimeout(()=>o.stop(),90);
 }
 
 </script>
