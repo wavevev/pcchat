@@ -16,6 +16,9 @@ const io = new Server(server);
 const path = require("path");
 
 app.use(express.static(path.join(__dirname, "public")));
+app.get("/", (req, res) => {
+  res.send("서버는 정상 작동 중입니다.");
+});
 
 let users = {};
 let admins = new Set(["9996"]);
