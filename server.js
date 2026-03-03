@@ -1,3 +1,10 @@
+/* =============================
+   PC통신 레트로 채팅 - 확장 버전
+   (효과음 선택 + ASCII 테두리 강화)
+   ============================= */
+
+// ===== server.js =====
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -17,15 +24,15 @@ io.on("connection", (socket) => {
     socket.nickname = nickname;
     users[socket.id] = nickname;
 
-    io.emit("system", `📢 ${nickname}님이 접속했습니다.`);
+    io.emit("system", `▶ ${nickname}님이 접속했습니다.`);
     io.emit("count", Object.keys(users).length);
 
-    if (nickname === "9996") {
+    if (admins.has(nickname)) {
       socket.emit("admin");
     }
 
     setTimeout(() => {
-      socket.emit("notice", "9996", "X와의 채팅을 시작합니다. 2분 동안 X에게 질문을 남겨주세요.");
+      socket.emit("notice", "9996", "X와의 채팅을 시작합니다. 2분 동안 질문을 남겨주세요.");
     }, 500);
   });
 
@@ -36,11 +43,15 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     if (users[socket.id]) {
-      io.emit("system", `📢 ${users[socket.id]}님이 퇴장했습니다.`);
+      io.emit("system", `◀ ${users[socket.id]}님이 퇴장했습니다.`);
       delete users[socket.id];
       io.emit("count", Object.keys(users).length);
     }
   });
 });
 
-server.listen(3000, () => console.log("서버 실행중"));
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+  console.log("서버 실행중");
+});

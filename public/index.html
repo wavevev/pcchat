@@ -9,111 +9,108 @@
 body {
   margin:0;
   background:#00009b;
-  font-family: 'Courier New', monospace;
+  font-family:'Courier New', monospace;
   color:white;
+}
+
+.box {
+  border:3px solid white;
+  padding:40px 50px;
 }
 
 #loginBox {
   width:600px;
   margin:120px auto;
-  padding:50px 60px;
-  border:3px solid white;
   text-align:center;
-  line-height:1.6;
-}
-
-#loginBox h2 {
-  margin-bottom:30px;
   line-height:1.8;
-}
-
-input {
-  width:80%;
-  padding:12px;
-  font-size:18px;
-  background:#00009b;
-  border:2px solid white;
-  color:white;
-}
-
-button {
-  margin-top:25px;
-  padding:8px 25px;
-  font-size:16px;
-  background:#00009b;
-  border:2px solid white;
-  color:white;
-  cursor:pointer;
 }
 
 #chatBox {
   display:none;
-  width:80%;
-  max-width:900px;
+  width:85%;
+  max-width:950px;
   margin:40px auto;
-  border:3px solid white;
-  padding:25px 35px;
+}
+
+#asciiHeader {
+  white-space:pre;
+  margin-bottom:20px;
+  font-size:14px;
 }
 
 #messages {
-  height:400px;
+  height:420px;
   overflow-y:auto;
-  margin-bottom:15px;
-  line-height:1.5;
+  margin:20px 0;
+  line-height:1.6;
 }
 
-#inputArea {
-  display:flex;
+input, select {
+  background:#00009b;
+  border:2px solid white;
+  color:white;
+  padding:8px;
+  font-family:'Courier New', monospace;
 }
 
-#msgInput {
-  flex:1;
+button {
+  background:#00009b;
+  border:2px solid white;
+  color:white;
+  padding:6px 18px;
+  cursor:pointer;
 }
 
+.time { color:#aaa; font-size:12px; margin-right:6px; }
 .system { color:#ffff66; }
 .notice { color:#00ffff; }
-.time { color:#aaa; font-size:12px; margin-right:6px; }
-
-@media (max-width:768px) {
-  #loginBox {
-    width:85%;
-    margin:80px auto;
-    padding:40px 30px;
-  }
-
-  #chatBox {
-    width:90%;
-    padding:20px;
-  }
-}
 
 </style>
 </head>
 <body>
 
-<div id="loginBox">
+<div id="loginBox" class="box">
   <h2>X와의 채팅을 시작합니다.<br/>당신의 이름은?</h2>
-  <input id="nickname" />
-  <br/>
+  <input id="nickname" /><br/><br/>
+
+  효과음 선택:
+  <select id="soundSelect">
+    <option value="classic">Classic 삐빅</option>
+    <option value="soft">Soft 딩</option>
+    <option value="retro">Retro 노이즈</option>
+  </select>
+  <br/><br/>
+
   <button onclick="join()">입장</button>
 </div>
 
-<div id="chatBox">
-  <div>접속 인원: <span id="count">0</span></div>
-  <div id="messages"></div>
-  <div id="inputArea">
-    <input id="msgInput" onkeydown="handleKey(event)" />
-    <button onclick="send()">전송</button>
-  </div>
+<div id="chatBox" class="box">
+
+<div id="asciiHeader">
++--------------------------------------------------+
+|              PC-COMMUNICATION 1994              |
++--------------------------------------------------+
+</div>
+
+접속 인원: <span id="count">0</span>
+
+<div id="messages"></div>
+
+<input id="msgInput" onkeydown="handleKey(event)" style="width:80%" />
+<button onclick="send()">전송</button>
+
 </div>
 
 <script>
 const socket = io();
-let isAdmin = false;
+let soundMode = "classic";
 
-function join() {
+function join(){
   const nick = document.getElementById("nickname").value;
-  if (!nick) return;
+  if(!nick) return;
+
+  soundMode = document.getElementById("soundSelect").value;
+
   socket.emit("join", nick);
   document.getElementById("loginBox").style.display="none";
   document.getElementById("chatBox").style.display="block";
@@ -121,9 +118,9 @@ function join() {
   playLoginSound();
 }
 
-function send() {
+function send(){
   const input = document.getElementById("msgInput");
-  if (!input.value) return;
+  if(!input.value) return;
   socket.emit("chat", input.value);
   input.value="";
   playChatSound();
@@ -136,34 +133,26 @@ function handleKey(e){
 socket.on("chat", (nick,msg,time)=>{
   const div = document.createElement("div");
   div.innerHTML = `<span class='time'>[${time}]</span> ${nick} : ${msg}`;
-  document.getElementById("messages").appendChild(div);
-  document.getElementById("messages").scrollTop = 999999;
+  messages.appendChild(div);
+  messages.scrollTop = 999999;
 });
 
 socket.on("system", (msg)=>{
   const div = document.createElement("div");
   div.className="system";
   div.innerText = msg;
-  document.getElementById("messages").appendChild(div);
+  messages.appendChild(div);
 });
 
 socket.on("notice", (nick,msg)=>{
   const div = document.createElement("div");
   div.className="notice";
   div.innerText = `[공지] ${nick} : ${msg}`;
-  document.getElementById("messages").appendChild(div);
+  messages.appendChild(div);
 });
 
 socket.on("count", (num)=>{
-  document.getElementById("count").innerText = num;
-});
-
-socket.on("admin", ()=>{
-  isAdmin = true;
-  const div = document.createElement("div");
-  div.className="notice";
-  div.innerText = "[관리자 권한 활성화]";
-  document.getElementById("messages").appendChild(div);
+  count.innerText = num;
 });
 
 function playLoginSound(){
@@ -179,11 +168,23 @@ function playLoginSound(){
 function playChatSound(){
   const ctx = new (window.AudioContext||window.webkitAudioContext)();
   const o = ctx.createOscillator();
-  o.type="triangle";
-  o.frequency.value=600;
+
+  if(soundMode === "classic"){
+    o.type="square";
+    o.frequency.value=700;
+  }
+  else if(soundMode === "soft"){
+    o.type="sine";
+    o.frequency.value=500;
+  }
+  else{
+    o.type="sawtooth";
+    o.frequency.value=600;
+  }
+
   o.connect(ctx.destination);
   o.start();
-  setTimeout(()=>o.stop(),70);
+  setTimeout(()=>o.stop(),80);
 }
 
 </script>
