@@ -201,18 +201,6 @@
     .system{ color: var(--hi); }
     .chat{ color: var(--fg); }
 
-    /* Chrome/Safari/Edge 스크롤바 */
-    #chatWrap::-webkit-scrollbar{ width: 14px; }
-    #chatWrap::-webkit-scrollbar-track{
-      background: #00009b;
-      border-left: 2px solid #fff;
-    }
-    #chatWrap::-webkit-scrollbar-thumb{
-      background: #0000db;
-      border: 2px solid #fff;
-    }
-    #chatWrap::-webkit-scrollbar-thumb:hover{ background: #0000ff; }
-
     /* INPUT + 블록 커서 */
     .inputbar{
       flex: 0 0 auto;
@@ -461,7 +449,6 @@
     }
 
     function resetToLogin(){
-      // 화면/상태 초기화
       chatWrap.textContent = "";
       typingText.textContent = "";
       endOverlay.style.display = "none";
@@ -492,7 +479,7 @@
     msgInput.addEventListener("focus", updateBlockCaret);
     window.addEventListener("resize", updateBlockCaret);
 
-    // 로그인 엔터 버그 방지
+    // 로그인 엔터 IME 버그 방지
     let nickComposing = false;
     nickEl.addEventListener("compositionstart", ()=> nickComposing = true);
     nickEl.addEventListener("compositionend", ()=> nickComposing = false);
@@ -600,7 +587,10 @@
     }
 
     // socket events
-    socket.on("admin", ()=> { isAdmin = true; setInputEnabled(!locked || isAdmin); });
+    socket.on("admin", ()=>{
+      isAdmin = true;
+      setInputEnabled(!locked || isAdmin);
+    });
 
     socket.on("users", (list)=> renderUserList(list));
     socket.on("count", (n)=> { countEl.textContent = String(n); });
@@ -630,7 +620,7 @@
       typingText.textContent = "";
     });
 
-    // 퇴장 당함(영구 X) -> 로그인 화면 복귀
+    // 퇴장 당함 -> 로그인 화면 복귀
     socket.on("kicked", (reason)=>{
       endOverlay.style.display = "flex";
       endBoxText.innerHTML = `퇴장되었습니다.<br/>${reason || ""}`;
@@ -645,10 +635,17 @@
     // 종료 연출(시간 0 또는 /종료)
     socket.on("ended", (reason)=>{
       addLine(`[공지] ${reason || "채팅이 종료되었습니다."}`, "system");
-      endOverlay.style.display = "flex";
-      endBoxText.innerHTML = `CONNECTION CLOSED<br/>${reason || "채팅이 종료되었습니다."}`;
-      // 필요하면 종료 시 로그인으로 자동 복귀도 가능:
-      // setTimeout(()=> resetToLogin(), 1500);
+
+      // ✅ 관리자는 팝업 안 띄움
+      if (!isAdmin) {
+        endOverlay.style.display = "flex";
+        endBoxText.innerHTML = `CONNECTION CLOSED<br/>${reason || "채팅이 종료되었습니다."}`;
+      }
+    });
+
+    // ✅ 관리자가 팝업 끄기
+    socket.on("hideOverlay", ()=>{
+      endOverlay.style.display = "none";
     });
 
     setInputEnabled(true);

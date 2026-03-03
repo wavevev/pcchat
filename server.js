@@ -1,4 +1,3 @@
-// server.js
 const express = require("express");
 const http = require("http");
 const path = require("path");
@@ -12,7 +11,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
 // ====== 설정 ======
-const ADMIN_PREFIX = "9996"; // 닉네임이 9996으로 시작하면 관리자(표시에서는 제거)
+const ADMIN_PREFIX = "9996"; // 닉네임이 9996으로 시작하면 관리자(표시는 제거)
 let usersById = {};          // socket.id -> { name, isAdmin }
 
 // 타이머(공유)
@@ -54,7 +53,7 @@ function lockRoomAndEnd(reason = "시간이 종료되었습니다.") {
   stopTimer();
   emitState();
   io.emit("locked", true);
-  io.emit("ended", reason); // 종료 연출
+  io.emit("ended", reason); // 클라에서 관리자/일반유저 다르게 표시
 }
 function resetTimer() {
   stopTimer();
@@ -68,6 +67,7 @@ function resetTimer() {
 function startTimer() {
   if (timer.running) return;
   if (timer.locked) return;
+
   timer.running = true;
   emitState();
 
@@ -85,7 +85,6 @@ function startTimer() {
   }, 1000);
 }
 function fastForward(seconds) {
-  // seconds만큼 즉시 감소(0 미만 불가)
   const s = Math.max(1, Math.min(9999, Number(seconds) || 1));
   timer.remaining = Math.max(0, timer.remaining - s);
   io.emit("tick", timer.remaining);
@@ -93,13 +92,12 @@ function fastForward(seconds) {
   if (timer.remaining === 0) lockRoomAndEnd("관리자에 의해 종료되었습니다.");
 }
 
-// ===== 소켓 =====
 io.on("connection", (socket) => {
   socket.on("join", (rawNick) => {
     const raw = String(rawNick || "").trim();
     if (!raw) return;
 
-    // ✅ 관리자 숨김: 9996 접두사면 관리자 / 표시는 제거
+    // 관리자 숨김: 9996 접두사면 관리자 / 표시용 이름에서는 제거
     let isAdmin = false;
     let name = raw;
     if (raw.startsWith(ADMIN_PREFIX)) {
@@ -120,10 +118,8 @@ io.on("connection", (socket) => {
     socket.emit("notice", "", "X와의 채팅을 시작합니다. 2분 동안 X에게 질문을 남겨주세요.");
   });
 
-  // 접속자 목록(F2)
   socket.on("req_users", () => socket.emit("users", userList()));
 
-  // 타이핑 표시
   socket.on("typing", (v) => {
     const me = usersById[socket.id];
     if (!me) return;
@@ -144,14 +140,12 @@ io.on("connection", (socket) => {
       const cmd = parts[0];
       const arg = parts.slice(1).join(" ").trim();
 
-      // /초기화 : 채팅 로그 지우기
       if (cmd === "/초기화") {
         io.emit("clear");
         io.emit("system", `[공지] 채팅 로그가 초기화되었습니다.`);
         return;
       }
 
-      // /퇴장 닉네임 : 현재 접속만 끊기(영구강퇴 X)
       if (cmd === "/퇴장") {
         if (!arg) {
           socket.emit("system", `[공지] 사용법: /퇴장 닉네임`);
@@ -167,32 +161,27 @@ io.on("connection", (socket) => {
           return;
         }
         io.to(targetId).emit("kicked", "관리자에 의해 퇴장되었습니다.");
-        const s = io.sockets.sockets.get(targetId);
-        if (s) s.disconnect(true);
+        io.sockets.sockets.get(targetId)?.disconnect(true);
         return;
       }
 
-      // /시작 : 타이머 시작
       if (cmd === "/시작") {
         io.emit("system", `[공지] 타이머가 시작되었습니다.`);
         startTimer();
         return;
       }
 
-      // /리셋 : 타이머 리셋
       if (cmd === "/리셋") {
         resetTimer();
         return;
       }
 
-      // /종료 : 즉시 종료 + 전체 잠금(관리자만 채팅 가능은 유지될 수도 있지만, 여기서는 잠금만)
       if (cmd === "/종료") {
         io.emit("system", `[공지] 관리자에 의해 채팅이 종료되었습니다.`);
         lockRoomAndEnd("관리자에 의해 채팅이 종료되었습니다.");
         return;
       }
 
-      // /가속 10 : 남은 시간을 10초만큼 즉시 줄임 (빨리 지나가게)
       if (cmd === "/가속") {
         const n = parseInt(arg || "1", 10);
         if (Number.isNaN(n) || n <= 0) {
@@ -204,11 +193,31 @@ io.on("connection", (socket) => {
         return;
       }
 
-      socket.emit("system", `[공지] 사용 가능한 명령어: /시작 /리셋 /초기화 /퇴장 닉네임 /가속 10 /종료`);
+      // ✅ 팝업 끄기: 전체 또는 특정 유저
+      if (cmd === "/팝업끄기") {
+        if (!arg) {
+          io.emit("hideOverlay");
+          socket.emit("system", `[공지] 모든 사용자의 팝업을 닫았습니다.`);
+          return;
+        }
+        const targetId = Object.keys(usersById).find((id) => usersById[id].name === arg);
+        if (!targetId) {
+          socket.emit("system", `[공지] "${arg}" 사용자를 찾을 수 없습니다.`);
+          return;
+        }
+        io.to(targetId).emit("hideOverlay");
+        socket.emit("system", `[공지] "${arg}" 사용자의 팝업을 닫았습니다.`);
+        return;
+      }
+
+      socket.emit(
+        "system",
+        `[공지] 명령어: /시작 /리셋 /초기화 /퇴장 닉네임 /가속 10 /종료 /팝업끄기(또는 /팝업끄기 닉네임)`
+      );
       return;
     }
 
-    // 일반 유저는 잠금이면 차단(관리자는 가능)
+    // ✅ 일반 유저는 잠금이면 차단(관리자는 가능)
     if (timer.locked && !me.isAdmin) return;
 
     io.emit("chat", me.name, msg, timeStr());
