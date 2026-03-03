@@ -1,207 +1,401 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>9996</title>
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
-
-/* ===== 둥근모꼴 ===== */
+/* ===== 둥근모꼴 (iPad/Safari 안정: woff2 우선, woff fallback) ===== */
 @font-face {
-  font-family: 'DungGeunMo';
-  src: url('./fonts/DungGeunMo.woff') format('woff');
+  font-family: "DungGeunMo";
+  src:
+    url("./fonts/DungGeunMo.woff2") format("woff2"),
+    url("./fonts/DungGeunMo.woff") format("woff");
+  font-display: swap;
 }
 
-body {
+:root{
+  --bg:#00009b;
+  --fg:#ffffff;
+  --hi:#ffff66;
+  --cyan:#00ffff;
+}
+
+html, body{
+  height:100%;
   margin:0;
-  background:#000080;
-  font-family:'DungGeunMo', monospace;
-  color:#ffffff;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:"DungGeunMo", monospace;
+  font-size:18px;
 }
 
-/* ===== 상단 상태바 ===== */
-.topbar {
-  background:#000080;
-  border-bottom:2px solid #ffffff;
-  padding:6px 12px;
-  font-size:14px;
+/* ✅ 입력/버튼만 폰트 안 먹는 문제 해결 */
+input, button, select, textarea{
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--fg);
+}
+
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.05) 0px,
+    rgba(255,255,255,0.05) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events:none;
+  animation:flicker 0.14s infinite;
+}
+@keyframes flicker{
+  0%{opacity:.92;}
+  50%{opacity:1;}
+  100%{opacity:.94;}
+}
+
+/* ===== 화면 레이아웃 ===== */
+.screen{
+  height:100dvh;
   display:flex;
-  justify-content:space-between;
+  align-items:center;
+  justify-content:center;
+  padding:22px;
+  box-sizing:border-box;
 }
 
-.timer {
-  color:#ffff00;
+.panel{
+  width:min(920px, 100%);
+  border:3px solid var(--fg);
+  box-sizing:border-box;
+  background:transparent;
 }
 
-/* ===== 메인 박스 ===== */
-.container {
-  width:760px;
-  margin:30px auto;
-  border:2px solid #ffffff;
-  padding:15px;
-}
-
-/* ===== 로그인 ===== */
-#loginBox {
+/* ===== 로그인 화면: 상단바 없음 + 정중앙 ===== */
+#loginScreen .panel{
+  padding:30px 28px;
   text-align:center;
-  line-height:1.8;
 }
-
-#chatBox {
-  display:none;
+#loginTitle{
+  line-height:1.95; /* ✅ 로그인 줄간격 살짝 */
+  margin:0 0 18px 0;
 }
-
-#messages {
-  height:360px;
-  overflow-y:auto;
-  margin:15px 0;
-  line-height:1.6;
+#nickname{
+  width:min(360px, 100%);
+  padding:12px 12px;
+  border:2px solid var(--fg);
+  background:var(--bg);
+  box-sizing:border-box;
 }
-
-/* ===== 입력 ===== */
-input {
-  background:#000080;
-  border:1px solid #ffffff;
-  color:#ffffff;
-  padding:4px;
-  font-family:'DungGeunMo', monospace;
-}
-
-button {
-  background:#000080;
-  border:1px solid #ffffff;
-  color:#ffffff;
-  padding:4px 12px;
+#enterBtn{
+  margin-top:16px;
+  padding:10px 22px;  /* ✅ 버튼 작게 */
+  border:2px solid var(--fg);
+  background:var(--bg);
   cursor:pointer;
 }
+#enterBtn:hover{
+  background:var(--fg);
+  color:var(--bg);
+}
 
-.time { color:#aaaaaa; }
-.system { color:#00ffff; }
-.notice { color:#ffff00; }
+/* ===== 채팅 화면: 상단바(하이텔 느낌) ===== */
+#chatScreen{
+  display:none;
+  flex-direction:column;
+  height:100dvh;
+  padding:16px;
+  box-sizing:border-box;
+}
 
+#topWrap{
+  border:3px solid var(--fg);
+  margin:0 0 10px 0;
+}
+
+#topBar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 12px;
+  border-bottom:2px solid var(--fg);
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+#titleBox{
+  background:var(--fg);
+  color:var(--bg);
+  padding:2px 10px;
+  letter-spacing:1px;
+}
+
+#statusLine{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+#timer{
+  color:var(--hi);
+}
+
+/* ===== 채팅 영역 ===== */
+#chatWrap{
+  border-left:3px solid var(--fg);
+  border-right:3px solid var(--fg);
+  flex:1;
+  overflow:auto;
+  padding:12px 12px;
+  line-height:1.65; /* ✅ 줄간격 살짝 */
+  font-size:16px;
+}
+
+.line{ margin:2px 0; }
+.time{ opacity:.75; margin-right:8px; }
+.system{ color:var(--hi); }
+.notice{ color:var(--cyan); }
+
+/* ===== 입력 영역 ===== */
+#inputWrap{
+  border:3px solid var(--fg);
+  border-top:none;
+  display:flex;
+  gap:8px;
+  padding:10px;
+}
+
+#msgInput{
+  flex:1;
+  border:2px solid var(--fg);
+  background:var(--bg);
+  padding:12px;
+  box-sizing:border-box;
+}
+
+#sendBtn{
+  border:2px solid var(--fg);
+  background:var(--bg);
+  padding:12px 16px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+#sendBtn:hover{
+  background:var(--fg);
+  color:var(--bg);
+}
+
+/* ===== 모바일 ===== */
+@media (max-width:600px){
+  #inputWrap{ flex-direction:column; }
+  #sendBtn{ width:100%; }
+  #chatWrap{ font-size:15px; }
+}
 </style>
 </head>
+
 <body>
 
-<div class="topbar">
-  <div>9996</div>
-  <div>남은 시간: <span class="timer" id="timer">120</span>초</div>
+<!-- ===== 로그인 화면 (상단바 없음) ===== -->
+<div id="loginScreen" class="screen">
+  <div class="panel">
+    <div id="loginTitle">
+      X와의 채팅을 시작합니다.<br/>
+      당신의 이름은?
+    </div>
+    <input id="nickname" autocomplete="off" />
+    <div>
+      <button id="enterBtn" type="button">입장</button>
+    </div>
+  </div>
 </div>
 
-<div class="container">
+<!-- ===== 채팅 화면 ===== -->
+<div id="chatScreen">
+  <div id="topWrap">
+    <div id="topBar">
+      <div id="titleBox">9996</div>
+      <div id="statusLine">
+        <div>접속 인원: <span id="count">0</span></div>
+        <div>남은 시간: <span id="timer">120</span>s</div>
+      </div>
+    </div>
+  </div>
 
-<div id="loginBox">
-  X와의 채팅을 시작합니다.<br/>
-  이름을 입력하세요.<br/><br/>
-  <input id="nickname"/>
-  <br/><br/>
-  <button onclick="join()">입장</button>
-</div>
+  <div id="chatWrap"></div>
 
-<div id="chatBox">
-
-접속 인원: <span id="count">0</span>
-
-<div id="messages"></div>
-
-<input id="msgInput" onkeydown="handleKey(event)" style="width:80%" />
-<button onclick="send()">전송</button>
-
-</div>
+  <div id="inputWrap">
+    <input id="msgInput" autocomplete="off" />
+    <button id="sendBtn" type="button">전송</button>
+  </div>
 </div>
 
 <script>
 const socket = io();
+
+const loginScreen = document.getElementById("loginScreen");
+const chatScreen  = document.getElementById("chatScreen");
+const nicknameEl  = document.getElementById("nickname");
+const enterBtn    = document.getElementById("enterBtn");
+
+const chatWrap    = document.getElementById("chatWrap");
+const msgInput    = document.getElementById("msgInput");
+const sendBtn     = document.getElementById("sendBtn");
+
+const countEl     = document.getElementById("count");
+const timerEl     = document.getElementById("timer");
+
+let nickname = "";
+let isComposing = false;
 let timeLeft = 120;
-let timerInterval;
+let timerId = null;
 
-/* ===== 타이머 ===== */
-function startTimer(){
-  timerInterval = setInterval(()=>{
-    timeLeft--;
-    document.getElementById("timer").innerText = timeLeft;
-    if(timeLeft <= 0){
-      clearInterval(timerInterval);
-    }
-  },1000);
+/* ✅ soft 딩 고정 (전송음만) + 로그인음 유지 */
+let audioCtx = null;
+function getCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
 }
-
-/* ===== 로그인 ===== */
-function join(){
-  const nick = document.getElementById("nickname").value;
-  if(!nick) return;
-
-  socket.emit("join", nick);
-
-  document.getElementById("loginBox").style.display="none";
-  document.getElementById("chatBox").style.display="block";
-
-  startTimer();
-  playLoginSound();
-}
-
-/* ===== 채팅 ===== */
-function send(){
-  const input = document.getElementById("msgInput");
-  if(!input.value) return;
-
-  socket.emit("chat", input.value);
-  input.value="";
-  playChatSound();
-}
-
-function handleKey(e){
-  if(e.key === "Enter") send();
-}
-
-socket.on("chat", (nick,msg,time)=>{
-  const div = document.createElement("div");
-  div.innerHTML = `<span class='time'>[${time}]</span> ${nick} : ${msg}`;
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-});
-
-socket.on("system", (msg)=>{
-  const div = document.createElement("div");
-  div.className="system";
-  div.innerText = msg;
-  messages.appendChild(div);
-});
-
-socket.on("notice", (nick,msg)=>{
-  const div = document.createElement("div");
-  div.className="notice";
-  div.innerText = `[공지] ${nick} : ${msg}`;
-  messages.appendChild(div);
-});
-
-socket.on("count", (num)=>{
-  count.innerText = num;
-});
-
-/* ===== 효과음 ===== */
-
 function playLoginSound(){
-  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const ctx = getCtx();
   const o = ctx.createOscillator();
-  o.type="square";
-  o.frequency.value=900;
+  o.type = "square";
+  o.frequency.value = 880;
   o.connect(ctx.destination);
   o.start();
   setTimeout(()=>o.stop(),120);
 }
-
-function playChatSound(){
-  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+function playSendSound(){
+  const ctx = getCtx();
   const o = ctx.createOscillator();
-  o.type="sine";
-  o.frequency.value=500;
+  o.type = "sine";
+  o.frequency.value = 500; // soft 딩
   o.connect(ctx.destination);
   o.start();
   setTimeout(()=>o.stop(),90);
 }
 
+function pad2(n){ return String(n).padStart(2,"0"); }
+function nowHM(){
+  const d = new Date();
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function addLine(text, cls){
+  const div = document.createElement("div");
+  div.className = "line" + (cls ? " " + cls : "");
+  div.textContent = text;
+  chatWrap.appendChild(div);
+  chatWrap.scrollTop = chatWrap.scrollHeight;
+}
+
+function addChatLine(nick, msg){
+  const t = nowHM();
+  const div = document.createElement("div");
+  div.className = "line";
+  const time = document.createElement("span");
+  time.className = "time";
+  time.textContent = `[${t}]`;
+  const text = document.createElement("span");
+  text.textContent = ` ${nick} : ${msg}`;
+  div.appendChild(time);
+  div.appendChild(text);
+  chatWrap.appendChild(div);
+  chatWrap.scrollTop = chatWrap.scrollHeight;
+}
+
+function addSystem(msg){
+  const t = nowHM();
+  const div = document.createElement("div");
+  div.className = "line system";
+  div.textContent = `[${t}] ${msg}`;
+  chatWrap.appendChild(div);
+  chatWrap.scrollTop = chatWrap.scrollHeight;
+}
+
+function startTimer(){
+  timerEl.textContent = String(timeLeft);
+  timerId = setInterval(()=>{
+    timeLeft -= 1;
+    timerEl.textContent = String(timeLeft);
+    if(timeLeft <= 0){
+      clearInterval(timerId);
+      msgInput.disabled = true;
+      sendBtn.disabled = true;
+      addSystem("⏳ 시간이 종료되었습니다.");
+    }
+  }, 1000);
+}
+
+function enter(){
+  const raw = nicknameEl.value.trim();
+  if(!raw) return;
+
+  nickname = raw;
+  loginScreen.style.display = "none";
+  chatScreen.style.display = "flex";
+
+  socket.emit("join", nickname);
+
+  // 공지(운영자)
+  addLine("9996 > X와의 채팅을 시작합니다. 2분 동안 X에게 질문을 남겨주세요.", "notice");
+
+  // 타이머
+  timeLeft = 120;
+  msgInput.disabled = false;
+  sendBtn.disabled = false;
+  if(timerId) clearInterval(timerId);
+  startTimer();
+
+  playLoginSound();
+  msgInput.focus();
+}
+
+function send(){
+  const msg = msgInput.value.trim();
+  if(!msg) return;
+
+  // 내 화면에 즉시 표시(좌측 정렬 유지)
+  addChatLine(nickname, msg);
+
+  socket.emit("chat", msg);
+  msgInput.value = "";
+  playSendSound();
+}
+
+/* ✅ 한글 엔터 중복/잘림 방지 */
+msgInput.addEventListener("compositionstart", ()=>{ isComposing = true; });
+msgInput.addEventListener("compositionend",   ()=>{ isComposing = false; });
+
+msgInput.addEventListener("keydown", (e)=>{
+  if(isComposing || e.isComposing) return;
+  if(e.key === "Enter"){
+    e.preventDefault();
+    send();
+  }
+});
+
+sendBtn.addEventListener("click", send);
+enterBtn.addEventListener("click", enter);
+nicknameEl.addEventListener("keydown", (e)=>{
+  if(e.key === "Enter"){
+    e.preventDefault();
+    enter();
+  }
+});
+
+/* ===== 서버 이벤트 ===== */
+socket.on("count", (num)=>{ countEl.textContent = String(num); });
+socket.on("system", (msg)=> addSystem(msg));
+socket.on("notice", (nick, msg)=> addLine(`[공지] ${nick} : ${msg}`, "notice"));
+socket.on("chat", (nick, msg, time)=>{
+  // 서버가 (nick,msg,time)로 보내는 형태를 유지(네 server.js 기준)
+  addChatLine(nick, msg);
+});
 </script>
 </body>
 </html>
