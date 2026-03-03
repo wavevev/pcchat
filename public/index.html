@@ -27,9 +27,6 @@
 
       --topbar-h:60px;
       --inputbar-h:92px;
-
-      --vvh: 100vh;
-      --kb: 0px;
     }
 
     html,body{
@@ -40,8 +37,11 @@
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
       letter-spacing: 0px;
+
+      /* ✅ 페이지 스크롤 없애기 */
+      overflow: hidden;
     }
-    input, button, textarea, select{
+    input, button{
       font-family: inherit;
       font-size: inherit;
       color: var(--fg);
@@ -71,9 +71,16 @@
       100%{opacity:.90;}
     }
 
-    /* ========= LOGIN (2번 캡처 스타일) ========= */
+    /* ===== 공통 화면 고정 (iPad 높이 흔들림 완화) ===== */
+    #loginScreen, #chatScreen{
+      position: fixed;
+      inset: 0;
+      height: 100dvh;
+      width: 100vw;
+    }
+
+    /* ========= LOGIN ========= */
     #loginScreen{
-      height: var(--vvh);
       display:flex;
       align-items:center;
       justify-content:center;
@@ -92,25 +99,30 @@
       display:flex;
       align-items:center;
       justify-content:center;
+      border: 2px solid var(--fg); /* ✅ GIF 박스는 테두리 유지(원하면 빼도 됨) */
+      box-sizing:border-box;
     }
     .loginGifBox img{
       width:100%;
       height:100%;
       object-fit: cover;
       image-rendering: pixelated;
+      display:block;
     }
     .loginTitle{
       line-height: 1.85;
       font-size: 22px;
       margin: 0 0 18px 0;
     }
+
+    /* ✅ “큰 박스(바깥 큰 테두리)” 제거: 컨테이너는 border 없음 */
     .loginPanel{
-      border: 2px solid var(--fg);
-      padding: 22px 22px 20px;
+      border: none;
+      padding: 0;
       box-sizing:border-box;
     }
     #nickname{
-      width: 100%;
+      width: min(520px, 100%);
       border: 2px solid var(--fg);
       background: var(--bg);
       padding: 12px;
@@ -118,6 +130,8 @@
       outline:none;
       box-sizing:border-box;
       text-align:center;
+      display:block;
+      margin: 0 auto;
     }
     #enterBtn{
       margin-top: 16px;
@@ -132,28 +146,45 @@
     /* ========= CHAT ========= */
     #chatScreen{
       display:none;
-      height: var(--vvh);
+      box-sizing:border-box;
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
-      box-sizing:border-box;
+
+      /* ✅ iPad 주소창에 의한 bounce 완화 */
+      overscroll-behavior: none;
     }
 
-    /* 상단바: 위 여백 + 쨍한 음영 + 텍스트 + 아래 진한 음영 */
+    /* 채팅 화면은 flex로 고정 */
+    .chatCol{
+      height: 100%;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+    }
+
+    /* 상단바 */
     .topbarWrap{
+      flex: 0 0 auto;
       padding-top: 10px;
       background: var(--bg);
     }
+
+    /* ✅ 상단 음영 색: #0000db */
     .topbarHighlight{
       height: 12px;
-      background: rgba(255,255,255,0.20);
+      background: #0000db;
       margin: 0 12px 6px;
     }
+
     .topbar{
       height: calc(var(--topbar-h) - 18px);
       display:grid;
       grid-template-columns: 1fr auto 1fr;
       align-items:center;
-      padding: 0 18px;
+
+      /* ✅ 좌/우 여백 조금 증가 */
+      padding: 0 28px;
+
       box-sizing:border-box;
       font-size: 24px;
       letter-spacing: 1px;
@@ -162,22 +193,28 @@
     .topCenter{ justify-self:center; font-weight:700; letter-spacing: 4px; }
     .topRight{ justify-self:end; }
     .timer{ color: var(--hi); }
+
     .topbarShadow{
       height: 12px;
       background: rgba(0,0,0,0.28);
       margin: 6px 12px 0;
     }
 
+    /* 채팅 로그 */
     #chatWrap{
-      height: calc(var(--vvh) - var(--topbar-h) - var(--inputbar-h) - var(--kb));
-      overflow:auto;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y:auto;
+
       padding: 18px 22px;
       box-sizing:border-box;
       font-size: 22px;
 
-      /* ✅ 줄간격(요청): 살짝 더 촘촘 */
+      /* ✅ 줄간격(요청): 촘촘 */
       line-height: 1.55;
-      letter-spacing: 0px;
+
+      /* iOS 스크롤 자연스럽게 */
+      -webkit-overflow-scrolling: touch;
     }
 
     .line{ white-space: pre-wrap; }
@@ -185,8 +222,9 @@
     .system{ color: var(--hi); }
     .chat{ color: var(--fg); }
 
+    /* 입력바 */
     .inputbar{
-      height: calc(var(--inputbar-h) + var(--kb));
+      flex: 0 0 auto;
       box-sizing:border-box;
       display:grid;
       grid-template-columns: 1fr auto;
@@ -215,7 +253,7 @@
       .loginGifBox{ width: 180px; height: 180px; }
       .loginTitle{ font-size: 20px; }
       #nickname, #enterBtn{ font-size: 20px; }
-      .topbar{ font-size: 20px; }
+      .topbar{ font-size: 20px; padding: 0 20px; }
       #chatWrap{ font-size: 18px; padding: 16px; }
       #msgInput, #sendBtn{ font-size: 18px; }
       .inputbar{ gap: 12px; }
@@ -229,6 +267,7 @@
   <div id="loginScreen">
     <div class="loginWrap">
       <div class="loginGifBox">
+        <!-- ✅ GIF 넣기: public/media/login.gif -->
         <img src="./media/login.gif" alt="" />
       </div>
 
@@ -246,21 +285,23 @@
 
   <!-- CHAT -->
   <div id="chatScreen">
-    <div class="topbarWrap">
-      <div class="topbarHighlight"></div>
-      <div class="topbar">
-        <div class="topLeft">접속 인원: <span id="count">0</span></div>
-        <div class="topCenter">9996</div>
-        <div class="topRight">남은 시간: <span class="timer" id="timer">120</span>초</div>
+    <div class="chatCol">
+      <div class="topbarWrap">
+        <div class="topbarHighlight"></div>
+        <div class="topbar">
+          <div class="topLeft">접속 인원: <span id="count">0</span></div>
+          <div class="topCenter">9996</div>
+          <div class="topRight">남은 시간: <span class="timer" id="timer">120</span>초</div>
+        </div>
+        <div class="topbarShadow"></div>
       </div>
-      <div class="topbarShadow"></div>
-    </div>
 
-    <div id="chatWrap" aria-live="polite"></div>
+      <div id="chatWrap" aria-live="polite"></div>
 
-    <div class="inputbar">
-      <input id="msgInput" autocomplete="off" />
-      <button id="sendBtn" type="button">전송</button>
+      <div class="inputbar">
+        <input id="msgInput" autocomplete="off" />
+        <button id="sendBtn" type="button">전송</button>
+      </div>
     </div>
   </div>
 
@@ -279,24 +320,8 @@
     const msgInput    = document.getElementById("msgInput");
     const sendBtn     = document.getElementById("sendBtn");
 
-    let nickname = "";
-    let timeLeft = 120;
-    let timerId = null;
-
-    // iOS keyboard / viewport
-    function updateViewportVars(){
-      const vv = window.visualViewport;
-      const height = vv ? vv.height : window.innerHeight;
-      document.documentElement.style.setProperty("--vvh", height + "px");
-      const kb = Math.max(0, (window.innerHeight - height));
-      document.documentElement.style.setProperty("--kb", kb + "px");
-    }
-    window.addEventListener("resize", updateViewportVars);
-    if (window.visualViewport){
-      window.visualViewport.addEventListener("resize", updateViewportVars);
-      window.visualViewport.addEventListener("scroll", updateViewportVars);
-    }
-    updateViewportVars();
+    let isAdmin = false;
+    let locked = false;
 
     // sounds (login 유지, send=soft 딩)
     let audioCtx = null;
@@ -323,13 +348,6 @@
       setTimeout(()=>o.stop(),90);
     }
 
-    // time HH:MM
-    function pad2(n){ return String(n).padStart(2,"0"); }
-    function nowHM(){
-      const d = new Date();
-      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-    }
-
     function scrollBottom(){
       chatWrap.scrollTop = chatWrap.scrollHeight;
     }
@@ -341,22 +359,7 @@
       scrollBottom();
     }
 
-    function startTimer(){
-      timerEl.textContent = String(timeLeft);
-      if(timerId) clearInterval(timerId);
-      timerId = setInterval(()=>{
-        timeLeft -= 1;
-        timerEl.textContent = String(Math.max(0, timeLeft));
-        if(timeLeft <= 0){
-          clearInterval(timerId);
-          msgInput.disabled = true;
-          sendBtn.disabled = true;
-          addLine(`[${nowHM()}] 시간이 종료되었습니다.`, "system");
-        }
-      }, 1000);
-    }
-
-    // ✅ 로그인 엔터 버그 해결: IME 조합 체크 + stopPropagation + 포커스 딜레이
+    // ✅ 로그인 엔터 버그 방지 (IME + stopPropagation + 포커스 딜레이)
     let nickComposing = false;
     nickEl.addEventListener("compositionstart", ()=> nickComposing = true);
     nickEl.addEventListener("compositionend", ()=> nickComposing = false);
@@ -365,24 +368,15 @@
       const raw = nickEl.value.trim();
       if(!raw) return;
 
-      nickname = raw;
-
       loginScreen.style.display = "none";
       chatScreen.style.display  = "block";
 
-      socket.emit("join", nickname);
-
-      timeLeft = 120;
-      msgInput.disabled = false;
-      sendBtn.disabled = false;
-      startTimer();
+      socket.emit("join", raw);
 
       playLoginSound();
 
-      // 포커스는 약간 늦게 (끝 글자 튀는 현상 방지)
       setTimeout(() => {
         msgInput.focus();
-        updateViewportVars();
       }, 30);
     }
 
@@ -394,48 +388,73 @@
         enter();
       }
     });
-
     enterBtn.addEventListener("click", enter);
 
     // send (IME)
-    let isComposing = false;
-    msgInput.addEventListener("compositionstart", ()=> isComposing = true);
-    msgInput.addEventListener("compositionend", ()=> isComposing = false);
+    let composing = false;
+    msgInput.addEventListener("compositionstart", ()=> composing = true);
+    msgInput.addEventListener("compositionend", ()=> composing = false);
+
+    function setInputEnabled(enabled){
+      msgInput.disabled = !enabled;
+      sendBtn.disabled = !enabled;
+    }
 
     function send(){
       const msg = msgInput.value.trim();
-      if(!msg || msgInput.disabled) return;
+      if(!msg) return;
+      if (locked && !isAdmin) return;
+
       socket.emit("chat", msg);
       msgInput.value = "";
       playSendSound();
     }
 
     msgInput.addEventListener("keydown", (e)=>{
-      if(isComposing || e.isComposing) return;
+      if(composing || e.isComposing) return;
       if(e.key === "Enter"){
         e.preventDefault();
         send();
       }
     });
-
     sendBtn.addEventListener("click", send);
 
     // socket events
+    socket.on("admin", ()=> { isAdmin = true; });
+
     socket.on("count", (n)=> { countEl.textContent = String(n); });
 
+    // 서버 타이머 표시 (서버가 tick 방송)
+    socket.on("tick", (sec)=>{
+      timerEl.textContent = String(sec);
+    });
+
+    socket.on("locked", (v)=>{
+      locked = !!v;
+      // ✅ 잠금이면: 관리자만 입력 가능
+      setInputEnabled(!locked || isAdmin);
+
+      if (locked) {
+        addLine(`[공지] 시간이 종료되었습니다.`, "notice");
+      }
+    });
+
     socket.on("system", (msg)=>{
-      // ✅ 삼각형 없음
-      addLine(`[${nowHM()}] ${msg}`, "system");
+      // 삼각형 없음
+      addLine(`[${timerEl.textContent ? "" : ""}] ${msg}`.trim(), "system");
     });
 
     socket.on("notice", (_nick, msg)=>{
-      // ✅ 공지에서 9996 제거
+      // 공지에서 9996 제거
       addLine(`[공지] ${msg}`, "notice");
     });
 
     socket.on("chat", (nick, msg, time)=>{
-      addLine(`[${time || nowHM()}] ${nick} : ${msg}`, "chat");
+      addLine(`[${time}] ${nick} : ${msg}`, "chat");
     });
+
+    // 초기 상태: 잠금 가정 X (서버에서 locked 오면 갱신)
+    setInputEnabled(true);
   </script>
 </body>
 </html>
