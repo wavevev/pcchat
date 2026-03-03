@@ -1,221 +1,190 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>9996</title>
-
+<title>PC통신 채팅</title>
+<script src="/socket.io/socket.io.js"></script>
 <style>
-@font-face {
-  font-family: 'DungGeunMo';
-  src: url('./fonts/DungGeunMo.woff2') format('woff2');
+
+body {
+  margin:0;
+  background:#00009b;
+  font-family: 'Courier New', monospace;
+  color:white;
 }
 
-html, body {
-  margin: 0;
-  height: 100%;
-  background: #0b1fa8;
-  color: white;
-  font-family: 'DungGeunMo', monospace;
+#loginBox {
+  width:600px;
+  margin:120px auto;
+  padding:50px 60px;
+  border:3px solid white;
+  text-align:center;
+  line-height:1.6;
 }
 
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255,255,255,0.05) 0px,
-    rgba(255,255,255,0.05) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  pointer-events: none;
-}
-
-#loginScreen, #chatScreen {
-  height: 100dvh;
-}
-
-#loginScreen {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.login-box {
-  border: 3px solid white;
-  padding: 40px;
-  width: 90%;
-  max-width: 500px;
-  text-align: center;
-}
-
-input, button {
-  font-family: 'DungGeunMo', monospace;
-  background: #0b1fa8;
-  color: white;
-  border: 2px solid white;
+#loginBox h2 {
+  margin-bottom:30px;
+  line-height:1.8;
 }
 
 input {
-  width: 100%;
-  padding: 12px;
-  margin-top: 20px;
+  width:80%;
+  padding:12px;
+  font-size:18px;
+  background:#00009b;
+  border:2px solid white;
+  color:white;
 }
 
 button {
-  margin-top: 20px;
-  padding: 8px 25px;
-  cursor: pointer;
+  margin-top:25px;
+  padding:8px 25px;
+  font-size:16px;
+  background:#00009b;
+  border:2px solid white;
+  color:white;
+  cursor:pointer;
 }
 
-#chatScreen { display: none; flex-direction: column; }
-
-#topBar {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 2px solid white;
-  padding: 10px;
+#chatBox {
+  display:none;
+  width:80%;
+  max-width:900px;
+  margin:40px auto;
+  border:3px solid white;
+  padding:25px 35px;
 }
 
-#chat {
-  flex: 1;
-  overflow-y: auto;
-  padding: 15px;
-  line-height: 1.7;
+#messages {
+  height:400px;
+  overflow-y:auto;
+  margin-bottom:15px;
+  line-height:1.5;
 }
 
 #inputArea {
-  display: flex;
-  border-top: 2px solid white;
+  display:flex;
 }
 
-#message {
-  flex: 1;
-  padding: 12px;
+#msgInput {
+  flex:1;
 }
 
-.system { color: yellow; }
+.system { color:#ffff66; }
+.notice { color:#00ffff; }
+.time { color:#aaa; font-size:12px; margin-right:6px; }
+
+@media (max-width:768px) {
+  #loginBox {
+    width:85%;
+    margin:80px auto;
+    padding:40px 30px;
+  }
+
+  #chatBox {
+    width:90%;
+    padding:20px;
+  }
+}
 
 </style>
 </head>
 <body>
 
-<div id="loginScreen">
-  <div class="login-box">
-    X와의 채팅을 시작합니다.<br/>
-    당신의 이름은?
-    <input id="nickname" />
-    <button onclick="enter()">입장</button>
-  </div>
+<div id="loginBox">
+  <h2>X와의 채팅을 시작합니다.<br/>당신의 이름은?</h2>
+  <input id="nickname" />
+  <br/>
+  <button onclick="join()">입장</button>
 </div>
 
-<div id="chatScreen">
-  <div id="topBar">
-    <div>9996</div>
-    <div>접속 <span id="count">0</span> | <span id="timer"></span></div>
-  </div>
-
-  <div id="chat"></div>
-
+<div id="chatBox">
+  <div>접속 인원: <span id="count">0</span></div>
+  <div id="messages"></div>
   <div id="inputArea">
-    <input id="message" />
+    <input id="msgInput" onkeydown="handleKey(event)" />
     <button onclick="send()">전송</button>
   </div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-let nickname="";
-let isAdmin=false;
-let timeLeft=120;
+let isAdmin = false;
 
-const msgInput=document.getElementById("message");
+function join() {
+  const nick = document.getElementById("nickname").value;
+  if (!nick) return;
+  socket.emit("join", nick);
+  document.getElementById("loginBox").style.display="none";
+  document.getElementById("chatBox").style.display="block";
 
-function retroBeep(type=1){
-  const ctx=new (window.AudioContext||window.webkitAudioContext)();
-  const osc=ctx.createOscillator();
-  osc.type='square';
-  osc.frequency.value = type===1?500:900;
-  osc.connect(ctx.destination);
-  osc.start();
-  setTimeout(()=>{osc.stop();ctx.close();},100);
+  playLoginSound();
 }
 
-function enter(){
-  let raw=document.getElementById("nickname").value.trim();
-  if(!raw) return;
-
-  if(raw.startsWith("9996")){
-    isAdmin=true;
-    raw=raw.replace("9996","");
-  }
-
-  nickname=raw;
-
-  document.getElementById("loginScreen").style.display="none";
-  document.getElementById("chatScreen").style.display="flex";
-
-  socket.emit("join",{nickname,isAdmin});
-  addSystem("9996 > X와의 채팅을 시작합니다. 2분 동안 질문을 남겨주세요.");
-  startTimer();
-  retroBeep(1);
+function send() {
+  const input = document.getElementById("msgInput");
+  if (!input.value) return;
+  socket.emit("chat", input.value);
+  input.value="";
+  playChatSound();
 }
 
-function startTimer(){
-  const timer=document.getElementById("timer");
-  timer.textContent=`남은시간 ${timeLeft}s`;
-
-  const interval=setInterval(()=>{
-    timeLeft--;
-    timer.textContent=`남은시간 ${timeLeft}s`;
-    if(timeLeft<=0){
-      clearInterval(interval);
-      if(!isAdmin){
-        msgInput.disabled=true;
-        addSystem("⏳ 시간이 종료되었습니다.");
-      }
-    }
-  },1000);
+function handleKey(e){
+  if(e.key === "Enter") send();
 }
 
-function send(){
-  const msg=msgInput.value.trim();
-  if(!msg) return;
-
-  addChat(`${nickname} > ${msg}`);
-  socket.emit("chat",msg);
-  msgInput.value="";
-  retroBeep(2);
-}
-
-msgInput.addEventListener("keydown",e=>{
-  if(e.key==="Enter"){
-    e.preventDefault();
-    send();
-  }
+socket.on("chat", (nick,msg,time)=>{
+  const div = document.createElement("div");
+  div.innerHTML = `<span class='time'>[${time}]</span> ${nick} : ${msg}`;
+  document.getElementById("messages").appendChild(div);
+  document.getElementById("messages").scrollTop = 999999;
 });
 
-function addChat(text){
-  const div=document.createElement("div");
-  div.textContent=text;
-  document.getElementById("chat").appendChild(div);
-  document.getElementById("chat").scrollTop=999999;
-}
-
-function addSystem(text){
-  const div=document.createElement("div");
-  div.textContent=text;
+socket.on("system", (msg)=>{
+  const div = document.createElement("div");
   div.className="system";
-  document.getElementById("chat").appendChild(div);
+  div.innerText = msg;
+  document.getElementById("messages").appendChild(div);
+});
+
+socket.on("notice", (nick,msg)=>{
+  const div = document.createElement("div");
+  div.className="notice";
+  div.innerText = `[공지] ${nick} : ${msg}`;
+  document.getElementById("messages").appendChild(div);
+});
+
+socket.on("count", (num)=>{
+  document.getElementById("count").innerText = num;
+});
+
+socket.on("admin", ()=>{
+  isAdmin = true;
+  const div = document.createElement("div");
+  div.className="notice";
+  div.innerText = "[관리자 권한 활성화]";
+  document.getElementById("messages").appendChild(div);
+});
+
+function playLoginSound(){
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  o.type="square";
+  o.frequency.value=880;
+  o.connect(ctx.destination);
+  o.start();
+  setTimeout(()=>o.stop(),120);
 }
 
-socket.on("chat",msg=>addChat(msg));
-socket.on("system",msg=>addSystem(msg));
-socket.on("count",c=>document.getElementById("count").textContent=c);
-socket.on("init logs",logs=>logs.forEach(l=>addChat(l)));
+function playChatSound(){
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  o.type="triangle";
+  o.frequency.value=600;
+  o.connect(ctx.destination);
+  o.start();
+  setTimeout(()=>o.stop(),70);
+}
 
 </script>
 </body>
