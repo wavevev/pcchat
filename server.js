@@ -7,42 +7,51 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-let userCount = 0;
-
 app.use(express.static(path.join(__dirname, "public")));
 
+let users = {}; // socket.id 기준 유저 저장
+
 io.on("connection", (socket) => {
-userCount++;
-io.emit("user count", userCount);
 
-socket.on("join", (nickname) => {
-socket.nickname = nickname;
-io.emit("system message", `▶ ${nickname}님이 접속했습니다.`);
+  socket.on("join", ({ nickname, isAdmin }) => {
+    users[socket.id] = { nickname, isAdmin };
+
+    socket.broadcast.emit("system", `▶ ${nickname}님이 접속했습니다.`);
+    io.emit("count", Object.keys(users).length);
+  });
+
+  socket.on("chat", (msg) => {
+    const user = users[socket.id];
+    if (!user) return;
+
+    // 🔐 관리자 전용 명령어
+    if (user.isAdmin && msg.startsWith("/notice ")) {
+      const text = msg.replace("/notice ", "");
+      io.emit("system", `📢 공지: ${text}`);
+      return;
+    }
+
+    if (user.isAdmin && msg.startsWith("/kick ")) {
+      const targetName = msg.replace("/kick ", "");
+      for (let id in users) {
+        if (users[id].nickname === targetName) {
+          io.to(id).emit("system", "🚫 관리자에 의해 퇴장되었습니다.");
+          io.sockets.sockets.get(id)?.disconnect();
+        }
+      }
+      return;
+    }
+
+    socket.broadcast.emit("chat", `${user.nickname} > ${msg}`);
+  });
+
+  socket.on("disconnect", () => {
+    if (users[socket.id]) {
+      socket.broadcast.emit("system", `◀ ${users[socket.id].nickname}님이 퇴장했습니다.`);
+      delete users[socket.id];
+      io.emit("count", Object.keys(users).length);
+    }
+  });
 });
 
-socket.on("chat message", (data) => {
-socket.broadcast.emit("chat message", data);
-});
-
-socket.on("disconnect", () => {
-userCount--;
-io.emit("user count", userCount);
-if (socket.nickname) {
-io.emit("system message", `◀ ${socket.nickname}님이 퇴장했습니다.`);
-}
-});
-});
-
-const PORT = process.env.PORT || 3000;
-
-server.listen(PORT, () => {
-  console.log("Server running");
-});
-
-// ===============================
-// 📁 server.js (관리자 권한 + 타이머 연동)
-// ===============================
-
- translator to=canmore.update_textdoc 
-
- const ADMIN_NAME = "9996, 백선우, 이세웅";
+server.listen(process.env.PORT || 3000);

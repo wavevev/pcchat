@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>9996</title>
 
 <style>
@@ -13,16 +13,12 @@
 
 html, body {
   margin: 0;
-  padding: 0;
   height: 100%;
   background: #0b1fa8;
   color: white;
   font-family: 'DungGeunMo', monospace;
-  font-size: 18px;
-  overflow: hidden;
 }
 
-/* CRT */
 body::after {
   content: "";
   position: fixed;
@@ -35,233 +31,190 @@ body::after {
     transparent 3px
   );
   pointer-events: none;
-  animation: flicker 0.15s infinite;
 }
 
-@keyframes flicker {
-  0% { opacity: 0.92; }
-  50% { opacity: 1; }
-  100% { opacity: 0.94; }
-}
-
-#login-screen, #chat-screen {
+.screen {
   height: 100dvh;
-}
-
-#login-screen {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px;
+}
+
+.box {
+  border: 3px solid white;
+  padding: 40px;
+  width: 90%;
+  max-width: 500px;
+  text-align: center;
   box-sizing: border-box;
 }
 
-#login-box {
-  border: 3px solid white;
-  padding: 30px;
-  text-align: center;
-  width: 100%;
-  max-width: 420px;
-}
-
-#login-box input {
-  margin-top: 20px;
-  padding: 12px;
-  width: 100%;
+input, button {
   font-family: 'DungGeunMo', monospace;
-  font-size: 18px;
   background: #0b1fa8;
   color: white;
   border: 2px solid white;
 }
 
-#login-box button {
+input {
+  width: 100%;
+  padding: 12px;
+  margin-top: 20px;
+  box-sizing: border-box;
+}
+
+button {
   margin-top: 20px;
   padding: 10px 30px;
-  font-family: 'DungGeunMo', monospace;
-  font-size: 16px;
-  background: #0b1fa8;
-  color: white;
-  border: 2px solid white;
   cursor: pointer;
-  width: auto;
 }
 
-#login-box button:hover {
-  background: white;
-  color: #0b1fa8;
-}
+#chatScreen { display: none; flex-direction: column; }
 
-#chat-screen {
-  display: none;
-  flex-direction: column;
-}
-
-#title-wrapper {
-  border: 3px solid white;
-  margin: 10px;
-}
-
-#title-bar {
+#topBar {
   display: flex;
   justify-content: space-between;
-  padding: 8px 12px;
   border-bottom: 2px solid white;
-}
-
-#title-name {
-  background: white;
-  color: #0b1fa8;
-  padding: 4px 10px;
+  padding: 10px;
 }
 
 #chat {
   flex: 1;
   overflow-y: auto;
-  padding: 14px;
-  margin: 0 10px;
-  border-left: 3px solid white;
-  border-right: 3px solid white;
-  line-height: 1.6;
+  padding: 15px;
+  line-height: 1.7;
 }
 
-#input-area {
+#inputArea {
   display: flex;
-  padding: 10px;
-  margin: 0 10px 10px 10px;
-  border: 3px solid white;
-  border-top: none;
-  gap: 8px;
+  border-top: 2px solid white;
 }
 
 #message {
   flex: 1;
-  padding: 14px;
-  font-size: 16px;
-  font-family: 'DungGeunMo', monospace;
-  background: #0b1fa8;
-  color: white;
-  border: 2px solid white;
+  padding: 12px;
 }
 
-#send-btn {
-  padding: 14px 16px;
-  font-size: 16px;
-  font-family: 'DungGeunMo', monospace;
-  background: #0b1fa8;
-  color: white;
-  border: 2px solid white;
-}
-
+#timer { color: yellow; }
 .system { color: yellow; }
-.time { opacity: 0.7; margin-right: 6px; }
 
-@media (max-width: 600px) {
-  #input-area { flex-direction: column; }
-  #send-btn { width: 100%; }
+@media(max-width:600px){
+  #inputArea { flex-direction: column; }
+  button { width: 100%; }
 }
-
 </style>
 </head>
 <body>
 
-<div id="login-screen">
-  <div id="login-box">
-    <div>
-      X와의 채팅을 시작합니다.<br/>
-      당신의 이름은?
-    </div>
-    <input id="nickname-input" />
-    <button onclick="enterChat()">입장</button>
+<div id="loginScreen" class="screen">
+  <div class="box">
+    X와의 채팅을 시작합니다.<br/>
+    당신의 이름은?
+    <input id="nickname" />
+    <button onclick="enter()">입장</button>
   </div>
 </div>
 
-<div id="chat-screen">
-  <div id="title-wrapper">
-    <div id="title-bar">
-      <div id="title-name"> 9996 </div>
-      <div>접속 인원: <span id="user-count">0</span></div>
+<div id="chatScreen" class="screen">
+  <div class="box" style="display:flex;flex-direction:column;height:100%;max-width:800px;">
+    <div id="topBar">
+      <div>9996</div>
+      <div>접속 <span id="count">0</span> | <span id="timer"></span></div>
     </div>
-  </div>
-
-  <div id="chat"></div>
-
-  <div id="input-area">
-    <input id="message" autocomplete="off" />
-    <button id="send-btn" onclick="sendMessage()">전송</button>
+    <div id="chat"></div>
+    <div id="inputArea">
+      <input id="message" />
+      <button onclick="send()">전송</button>
+    </div>
   </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-const chat = document.getElementById("chat");
-const messageInput = document.getElementById("message");
 let nickname = "";
+let isAdmin = false;
+let timeLeft = 120;
+let timerInterval;
 
-function getTime() {
-  const now = new Date();
-  return now.toLocaleTimeString();
+function beep(freq=600,duration=0.1){
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  osc.type='square';
+  osc.frequency.value=freq;
+  osc.connect(ctx.destination);
+  osc.start();
+  setTimeout(()=>{osc.stop();ctx.close();},duration*1000);
 }
 
-function appendMessage(msg, isSystem = false) {
-  const line = document.createElement("div");
-  const time = document.createElement("span");
-  time.className = "time";
-  time.textContent = `[${getTime()}]`;
-  line.appendChild(time);
+function enter(){
+  let raw = document.getElementById("nickname").value.trim();
+  if(!raw) return;
 
-  const text = document.createElement("span");
-  text.textContent = msg;
-  if (isSystem) text.className = "system";
-
-  line.appendChild(text);
-  chat.appendChild(line);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function enterChat() {
-  const input = document.getElementById("nickname-input");
-  if (!input.value.trim()) return;
-  nickname = input.value.trim();
-
-  document.getElementById("login-screen").style.display = "none";
-  document.getElementById("chat-screen").style.display = "flex";
-
-  socket.emit("join", nickname);
-
-  // 운영자 공지
-  setTimeout(() => {
-    appendMessage("9996 > X와의 채팅을 시작합니다. 1분 30초 동안 X에게 질문을 남겨주세요.", true);
-  }, 300);
-
-  messageInput.focus();
-}
-
-function sendMessage() {
-  const msg = messageInput.value.trim();
-  if (!msg) return;
-  const formatted = nickname + " > " + msg;
-  appendMessage(formatted);
-  socket.emit("chat message", formatted);
-  messageInput.value = "";
-}
-
-messageInput.addEventListener("keydown", function(e) {
-  if (e.isComposing) return;
-  if (e.key === "Enter") {
-    e.preventDefault();
-    sendMessage();
+  // 👑 몰래 관리자: 이름 앞에 9996 붙이면 관리자
+  if(raw.startsWith("9996")){
+    isAdmin = true;
+    raw = raw.replace("9996","");
   }
-});
 
-socket.on("chat message", (msg) => appendMessage(msg));
-socket.on("system message", (msg) => appendMessage(msg, true));
-socket.on("user count", (count) => {
-  document.getElementById("user-count").textContent = count;
-});
+  nickname = raw;
+
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("chatScreen").style.display="flex";
+
+  socket.emit("join", {nickname,isAdmin});
+
+  addSystem("9996 > X와의 채팅을 시작합니다. 2분 동안 질문을 남겨주세요.");
+  startTimer();
+  beep(400,0.2);
+}
+
+function startTimer(){
+  const timerEl=document.getElementById("timer");
+  timerEl.textContent=`남은시간 ${timeLeft}s`;
+
+  timerInterval=setInterval(()=>{
+    timeLeft--;
+    timerEl.textContent=`남은시간 ${timeLeft}s`;
+    if(timeLeft<=0){
+      clearInterval(timerInterval);
+      if(!isAdmin){
+        document.getElementById("message").disabled=true;
+        addSystem("⏳ 시간이 종료되었습니다.");
+      }
+    }
+  },1000);
+}
+
+function send(){
+  const input=document.getElementById("message");
+  const msg=input.value.trim();
+  if(!msg) return;
+
+  addChat(`${nickname} > ${msg}`);
+  socket.emit("chat",msg);
+  input.value="";
+  beep(800,0.05);
+}
+
+function addChat(text){
+  const div=document.createElement("div");
+  div.textContent=text;
+  document.getElementById("chat").appendChild(div);
+  document.getElementById("chat").scrollTop=99999;
+}
+
+function addSystem(text){
+  const div=document.createElement("div");
+  div.textContent=text;
+  div.className="system";
+  document.getElementById("chat").appendChild(div);
+}
+
+socket.on("chat",msg=>addChat(msg));
+socket.on("system",msg=>addSystem(msg));
+socket.on("count",c=>document.getElementById("count").textContent=c);
 
 </script>
-
 </body>
 </html>
