@@ -7,7 +7,7 @@
 
 <style>
 
-/* ===== 둥근모꼴 폰트 ===== */
+/* ===== 둥근모꼴 ===== */
 @font-face {
   font-family: 'DungGeunMo';
   src: url('./fonts/DungGeunMo.woff') format('woff');
@@ -15,86 +15,91 @@
 
 body {
   margin:0;
-  background:#00009b;
+  background:#000080;
   font-family:'DungGeunMo', monospace;
-  color:white;
+  color:#ffffff;
 }
 
-/* ===== 상단 타이틀 ===== */
-.header {
-  background:#00009b;
-  border-bottom:3px solid white;
-  padding:12px 20px;
-  font-size:18px;
+/* ===== 상단 상태바 ===== */
+.topbar {
+  background:#000080;
+  border-bottom:2px solid #ffffff;
+  padding:6px 12px;
+  font-size:14px;
+  display:flex;
+  justify-content:space-between;
 }
 
-.box {
-  border:3px solid white;
-  padding:20px 25px; /* 여백 줄임 */
+.timer {
+  color:#ffff00;
+}
+
+/* ===== 메인 박스 ===== */
+.container {
+  width:760px;
+  margin:30px auto;
+  border:2px solid #ffffff;
+  padding:15px;
 }
 
 /* ===== 로그인 ===== */
 #loginBox {
-  width:420px;
-  margin:100px auto;
   text-align:center;
-  line-height:2;
+  line-height:1.8;
 }
 
 #chatBox {
   display:none;
-  width:85%;
-  max-width:900px;
-  margin:30px auto;
 }
 
 #messages {
-  height:420px;
+  height:360px;
   overflow-y:auto;
-  margin:20px 0;
-  line-height:1.7;
+  margin:15px 0;
+  line-height:1.6;
 }
 
+/* ===== 입력 ===== */
 input {
-  background:#00009b;
-  border:2px solid white;
-  color:white;
-  padding:6px;
+  background:#000080;
+  border:1px solid #ffffff;
+  color:#ffffff;
+  padding:4px;
   font-family:'DungGeunMo', monospace;
 }
 
 button {
-  background:#00009b;
-  border:2px solid white;
-  color:white;
-  padding:5px 15px;
+  background:#000080;
+  border:1px solid #ffffff;
+  color:#ffffff;
+  padding:4px 12px;
   cursor:pointer;
 }
 
-.time { color:#aaa; font-size:12px; margin-right:6px; }
-.system { color:#ffff66; }
-.notice { color:#00ffff; }
+.time { color:#aaaaaa; }
+.system { color:#00ffff; }
+.notice { color:#ffff00; }
 
 </style>
 </head>
 <body>
 
-<div class="header">
-  9996 통신망 접속
+<div class="topbar">
+  <div>9996</div>
+  <div>남은 시간: <span class="timer" id="timer">120</span>초</div>
 </div>
 
-<div id="loginBox" class="box">
-  <div>
-    X와의 채팅을 시작합니다.<br/>
-    당신의 이름은?
-  </div>
-  <br/>
-  <input id="nickname" />
+<div class="container">
+
+<div id="loginBox">
+  X와의 채팅을 시작합니다.<br/>
+  이름을 입력하세요.<br/><br/>
+  <input id="nickname"/>
   <br/><br/>
   <button onclick="join()">입장</button>
 </div>
 
-<div id="chatBox" class="box">
+<div id="chatBox">
 
 접속 인원: <span id="count">0</span>
 
@@ -104,9 +109,23 @@ button {
 <button onclick="send()">전송</button>
 
 </div>
+</div>
 
 <script>
 const socket = io();
+let timeLeft = 120;
+let timerInterval;
+
+/* ===== 타이머 ===== */
+function startTimer(){
+  timerInterval = setInterval(()=>{
+    timeLeft--;
+    document.getElementById("timer").innerText = timeLeft;
+    if(timeLeft <= 0){
+      clearInterval(timerInterval);
+    }
+  },1000);
+}
 
 /* ===== 로그인 ===== */
 function join(){
@@ -114,9 +133,11 @@ function join(){
   if(!nick) return;
 
   socket.emit("join", nick);
+
   document.getElementById("loginBox").style.display="none";
   document.getElementById("chatBox").style.display="block";
 
+  startTimer();
   playLoginSound();
 }
 
@@ -138,7 +159,7 @@ socket.on("chat", (nick,msg,time)=>{
   const div = document.createElement("div");
   div.innerHTML = `<span class='time'>[${time}]</span> ${nick} : ${msg}`;
   messages.appendChild(div);
-  messages.scrollTop = 999999;
+  messages.scrollTop = messages.scrollHeight;
 });
 
 socket.on("system", (msg)=>{
@@ -165,13 +186,12 @@ function playLoginSound(){
   const ctx = new (window.AudioContext||window.webkitAudioContext)();
   const o = ctx.createOscillator();
   o.type="square";
-  o.frequency.value=880;
+  o.frequency.value=900;
   o.connect(ctx.destination);
   o.start();
   setTimeout(()=>o.stop(),120);
 }
 
-/* soft 딩으로 고정 */
 function playChatSound(){
   const ctx = new (window.AudioContext||window.webkitAudioContext)();
   const o = ctx.createOscillator();
