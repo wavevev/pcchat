@@ -2,10 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>9996</title>
 
 <style>
-
 @font-face {
   font-family: 'DungGeunMo';
   src: url('./fonts/DungGeunMo.woff2') format('woff2');
@@ -16,9 +16,10 @@ body {
   background: #0b1fa8;
   color: white;
   font-family: 'DungGeunMo', monospace;
-  font-size: 19px;
+  font-size: 18px;
 }
 
+/* CRT 효과 */
 body::after {
   content: "";
   position: fixed;
@@ -48,34 +49,29 @@ body::after {
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 #login-box {
   border: 3px solid white;
-  padding: 40px;
+  padding: 30px;
   text-align: center;
+  width: 100%;
+  max-width: 400px;
 }
 
-#login-box input {
-  margin-top: 20px;
-  padding: 12px;
-  font-family: 'DungGeunMo', monospace;
-  font-size: 18px;
-  width: 260px;
-  background: #0b1fa8;
-  color: white;
-  border: 2px solid white;
-}
-
+#login-box input,
 #login-box button {
+  width: 100%;
+  box-sizing: border-box;
   margin-top: 20px;
-  padding: 12px 30px;
+  padding: 14px;
   font-family: 'DungGeunMo', monospace;
   font-size: 18px;
   background: #0b1fa8;
   color: white;
   border: 2px solid white;
-  cursor: pointer;
 }
 
 #login-box button:hover {
@@ -97,14 +93,16 @@ body::after {
 #title-bar {
   display: flex;
   justify-content: space-between;
-  padding: 6px 12px;
+  padding: 8px 12px;
   border-bottom: 2px solid white;
+  flex-wrap: wrap;
 }
 
 #title-name {
   background: white;
   color: #0b1fa8;
-  padding: 2px 10px;
+  padding: 4px 10px;
+  margin-bottom: 5px;
 }
 
 #chat {
@@ -114,20 +112,22 @@ body::after {
   margin: 0 10px;
   border-left: 3px solid white;
   border-right: 3px solid white;
+  font-size: 16px;
 }
 
 #input-area {
   display: flex;
-  padding: 12px;
+  padding: 10px;
   margin: 0 10px 10px 10px;
   border: 3px solid white;
   border-top: none;
+  gap: 8px;
 }
 
 #message {
   flex: 1;
-  padding: 16px;
-  font-size: 18px;
+  padding: 14px;
+  font-size: 16px;
   font-family: 'DungGeunMo', monospace;
   background: #0b1fa8;
   color: white;
@@ -135,14 +135,12 @@ body::after {
 }
 
 #send-btn {
-  padding: 16px 24px;
-  font-size: 18px;
-  margin-left: 10px;
+  padding: 14px 16px;
+  font-size: 16px;
   font-family: 'DungGeunMo', monospace;
   background: #0b1fa8;
   color: white;
   border: 2px solid white;
-  cursor: pointer;
 }
 
 #send-btn:hover {
@@ -153,6 +151,15 @@ body::after {
 .system { color: yellow; }
 .time { opacity: 0.7; margin-right: 6px; }
 
+/* 📱 모바일 최적화 */
+@media (max-width: 600px) {
+  body { font-size: 16px; }
+  #chat { font-size: 14px; }
+  #title-bar { flex-direction: column; align-items: flex-start; }
+  #input-area { flex-direction: column; }
+  #send-btn { width: 100%; }
+}
+
 </style>
 </head>
 <body>
@@ -161,7 +168,6 @@ body::after {
   <div id="login-box">
     <div>닉네임을 입력하세요</div>
     <input id="nickname-input" />
-    <br/>
     <button onclick="enterChat()">입장</button>
   </div>
 </div>
@@ -223,30 +229,22 @@ function appendMessage(msg, isSystem = false) {
 function sendMessage() {
   const msg = messageInput.value.trim();
   if (!msg) return;
-
   const formatted = nickname + " > " + msg;
   appendMessage(formatted);
   socket.emit("chat message", formatted);
   messageInput.value = "";
 }
 
-// ✅ 한글 조합 중 엔터 방지 + 중복 전송 방지
 messageInput.addEventListener("keydown", function(e) {
-  if (e.isComposing) return; // 한글 입력 조합 중이면 무시
+  if (e.isComposing) return;
   if (e.key === "Enter") {
     e.preventDefault();
     sendMessage();
   }
 });
 
-socket.on("chat message", (msg) => {
-  appendMessage(msg);
-});
-
-socket.on("system message", (msg) => {
-  appendMessage(msg, true);
-});
-
+socket.on("chat message", (msg) => appendMessage(msg));
+socket.on("system message", (msg) => appendMessage(msg, true));
 socket.on("user count", (count) => {
   document.getElementById("user-count").textContent = count;
 });
