@@ -1,228 +1,207 @@
-// ===== server.js =====
+// server.js
 const express = require("express");
 const http = require("http");
-const { Server } = require("socket.io");
 const path = require("path");
+const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, "public")));
+app.get("/", (_, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
-const users = {}; // socket.id -> displayName
+// ====== 상태 ======
+const ADMIN_PREFIX = "9996"; // 닉네임이 9996으로 시작하면 관리자(표시는 제거)
+let usersById = {};          // socket.id -> { name, isAdmin }
 
-// ===== 타이머 상태 (관리자 /시작, /리셋, /정지) =====
-const TOTAL = 120;
-let remaining = TOTAL;
-let running = false;
-let locked = false;
-let tickTimer = null;
+// 타이머(공유)
+let timer = {
+  duration: 120,
+  remaining: 120,
+  running: false,
+  locked: false,
+  interval: null,
+};
 
-// ===== 타이핑 표시 =====
-let typingUsers = new Set();
-let typingTimerById = new Map();
-
-function emitState(toSocket = null) {
-  const payload = { remaining, running, locked };
-  if (toSocket) toSocket.emit("state", payload);
-  else io.emit("state", payload);
+function userList() {
+  return Object.values(usersById).map((u) => u.name);
+}
+function countUsers() {
+  return Object.keys(usersById).length;
+}
+function emitUsers() {
+  io.emit("users", userList());
+  io.emit("count", countUsers());
+}
+function emitState() {
+  io.emit("state", { remaining: timer.remaining, locked: timer.locked, running: timer.running });
 }
 
 function stopTimer() {
-  running = false;
-  if (tickTimer) {
-    clearInterval(tickTimer);
-    tickTimer = null;
-  }
-  emitState();
-}
-
-function startTimer() {
-  if (running || locked) return;
-  running = true;
-
-  tickTimer = setInterval(() => {
-    remaining -= 1;
-    if (remaining < 0) remaining = 0;
-
-    io.emit("tick", remaining);
-
-    // ✅ 10초 효과음 없음, 공지만
-    if (remaining === 10) {
-      io.emit("notice", "9996", "10초 남았습니다.");
-    }
-
-    if (remaining === 0) {
-      locked = true;
-      io.emit("locked", true);
-      stopTimer();
-    }
-  }, 1000);
-
-  emitState();
+  if (timer.interval) clearInterval(timer.interval);
+  timer.interval = null;
+  timer.running = false;
 }
 
 function resetTimer() {
-  remaining = TOTAL;
-  locked = false;
   stopTimer();
-  io.emit("locked", false);
-  io.emit("tick", remaining);
-  io.emit("notice", "9996", "시간이 리셋되었습니다. /시작 으로 다시 시작할 수 있습니다.");
+  timer.remaining = timer.duration;
+  timer.locked = false;
   emitState();
+  io.emit("tick", timer.remaining);
+  io.emit("locked", false);
+  io.emit("system", `[공지] 타이머가 리셋되었습니다.`);
 }
 
-function broadcastUsers() {
-  io.emit("users", Object.values(users));
+function startTimer() {
+  if (timer.running) return;
+  timer.running = true;
+  timer.locked = false;
+  emitState();
+
+  timer.interval = setInterval(() => {
+    if (!timer.running) return;
+
+    timer.remaining -= 1;
+    if (timer.remaining < 0) timer.remaining = 0;
+
+    io.emit("tick", timer.remaining);
+
+    if (timer.remaining === 0) {
+      timer.locked = true;
+      emitState();
+      io.emit("locked", true);
+      io.emit("ended"); // ✅ 종료 연출 트리거
+      stopTimer();
+    }
+  }, 1000);
 }
 
-function broadcastTyping() {
-  const names = [];
-  for (const id of typingUsers) {
-    const n = users[id];
-    if (n) names.push(n);
-  }
-  let text = "";
-  if (names.length === 1) text = `${names[0]} 입력 중...`;
-  else if (names.length === 2) text = `${names[0]}, ${names[1]} 입력 중...`;
-  else if (names.length >= 3) text = `${names[0]}, ${names[1]} 외 ${names.length - 2}명 입력 중...`;
-
-  io.emit("typing", text);
-}
-
-function parseNickname(raw) {
-  const input = String(raw || "").trim();
-  if (!input) return null;
-
-  let isAdmin = false;
-  let displayName = input;
-
-  // 이름 앞에 9996 붙이면 관리자(표시는 숨김)
-  if (input.startsWith("9996")) {
-    isAdmin = true;
-    displayName = input.replace(/^9996[\s:\-]*/, "").trim();
-    if (!displayName) displayName = "관리자";
-  }
-  return { isAdmin, displayName };
+function timeStr() {
+  // 오전/오후 없이 HH:MM
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
 }
 
 io.on("connection", (socket) => {
+  socket.on("join", (rawNick) => {
+    const raw = String(rawNick || "").trim();
+    if (!raw) return;
+
+    // ✅ 관리자 숨김: 9996 접두사면 관리자 / 표시용 이름에서는 제거
+    let isAdmin = false;
+    let name = raw;
+    if (raw.startsWith(ADMIN_PREFIX)) {
+      isAdmin = true;
+      name = raw.replace(/^9996\s*/, "").trim();
+      if (!name) name = "관리자";
+    }
+
+    usersById[socket.id] = { name, isAdmin };
+    if (isAdmin) socket.emit("admin");
+
+    emitUsers();
+    emitState();
+    socket.emit("tick", timer.remaining);
+    socket.emit("locked", timer.locked);
+
+    // 접속 메시지 (삼각형 하나만)
+    io.emit("system", `[${timeStr()}] ▶ ${name}님이 접속했습니다.`);
+
+    // 공지 (9996 텍스트 제거)
+    socket.emit("notice", "", "X와의 채팅을 시작합니다. 2분 동안 X에게 질문을 남겨주세요.");
+  });
+
+  // ✅ 접속자 목록(F2) 요청
   socket.on("req_users", () => {
-    socket.emit("users", Object.values(users));
-
-  socket.on("requestUsers", () => {
-  socket.emit("userList", Object.values(users));
-
-  
-});
+    socket.emit("users", userList());
   });
 
-  socket.on("join", (rawNickname) => {
-    const parsed = parseNickname(rawNickname);
-    if (!parsed) return;
-
-    socket.isAdmin = parsed.isAdmin;
-    socket.nickname = parsed.displayName;
-    users[socket.id] = parsed.displayName;
-
-    io.emit("system", `${parsed.displayName}님이 접속했습니다.`);
-    io.emit("count", Object.keys(users).length);
-    broadcastUsers();
-
-    if (socket.isAdmin) socket.emit("admin", true);
-
-    // 상태/타이머 공유
-    emitState(socket);
-    socket.emit("tick", remaining);
-    socket.emit("locked", locked);
-    socket.emit("typing", "");
-    socket.emit("notice", "9996", "X와의 채팅을 시작합니다. 관리자가 /시작 을 입력하면 2분이 시작됩니다.");
+  // 타이핑 표시
+  socket.on("typing", (v) => {
+    const me = usersById[socket.id];
+    if (!me) return;
+    if (v) socket.broadcast.emit("typing", `${me.name}님 입력중...`);
+    else socket.broadcast.emit("typing", "");
   });
 
-  socket.on("chat", (msg) => {
-    const text = String(msg || "").trim();
-    if (!text) return;
-    if (!users[socket.id]) return;
+  socket.on("chat", (msgRaw) => {
+    const me = usersById[socket.id];
+    if (!me) return;
 
-    // 잠금이면 관리자만
-    if (locked && !socket.isAdmin) return;
+    const msg = String(msgRaw || "");
 
-    // 관리자 명령어
-    if (socket.isAdmin && text.startsWith("/")) {
-      if (text === "/시작") {
-        if (locked) return socket.emit("notice", "9996", "이미 종료되었습니다. /리셋 후 /시작 해주세요.");
-        if (running) return socket.emit("notice", "9996", "이미 진행 중입니다.");
-        io.emit("notice", "9996", "타이머가 시작되었습니다.");
+    // ✅ 관리자 명령어
+    if (me.isAdmin && msg.trim().startsWith("/")) {
+      const parts = msg.trim().split(/\s+/);
+      const cmd = parts[0].toLowerCase();
+      const arg = parts.slice(1).join(" ");
+
+      if (cmd === "/clear") {
+        io.emit("clear");
+        io.emit("system", `[공지] 채팅 로그가 초기화되었습니다.`);
+        return;
+      }
+
+      if (cmd === "/kick") {
+        // ✅ 영구 강퇴 X : 현재 연결만 끊기
+        const targetName = arg.trim();
+        if (!targetName) {
+          socket.emit("system", `[공지] 사용법: /kick 닉네임`);
+          return;
+        }
+        const targetId = Object.keys(usersById).find((id) => usersById[id].name === targetName);
+        if (!targetId) {
+          socket.emit("system", `[공지] "${targetName}" 사용자를 찾을 수 없습니다.`);
+          return;
+        }
+        if (usersById[targetId].isAdmin) {
+          socket.emit("system", `[공지] 관리자는 킥할 수 없습니다.`);
+          return;
+        }
+
+        io.to(targetId).emit("kicked", "관리자에 의해 퇴장되었습니다.");
+        const s = io.sockets.sockets.get(targetId);
+        if (s) s.disconnect(true);
+        return;
+      }
+
+      if (cmd === "/start") {
+        io.emit("system", `[공지] 타이머가 시작되었습니다.`);
         startTimer();
         return;
       }
-      if (text === "/리셋") {
+
+      if (cmd === "/reset") {
         resetTimer();
         return;
       }
-      if (text === "/정지") {
-        stopTimer();
-        io.emit("notice", "9996", "타이머가 정지되었습니다.");
-        return;
-      }
-      socket.emit("notice", "9996", "사용 가능한 명령어: /시작 /리셋 /정지");
+
+      socket.emit("system", `[공지] 알 수 없는 명령어: ${cmd}`);
       return;
     }
 
-    const d = new Date();
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    const time = `${hh}:${mm}`;
+    // ✅ 일반 유저는 잠금이면 차단 (관리자는 가능)
+    if (timer.locked && !me.isAdmin) return;
 
-    io.emit("chat", socket.nickname || "익명", text, time);
-  });
-
-  socket.on("typing", (isTyping) => {
-    if (!users[socket.id]) return;
-
-    if (isTyping) {
-      typingUsers.add(socket.id);
-
-      if (typingTimerById.has(socket.id)) clearTimeout(typingTimerById.get(socket.id));
-
-      const t = setTimeout(() => {
-        typingUsers.delete(socket.id);
-        typingTimerById.delete(socket.id);
-        broadcastTyping();
-      }, 2000);
-
-      typingTimerById.set(socket.id, t);
-      broadcastTyping();
-    } else {
-      typingUsers.delete(socket.id);
-      if (typingTimerById.has(socket.id)) {
-        clearTimeout(typingTimerById.get(socket.id));
-        typingTimerById.delete(socket.id);
-      }
-      broadcastTyping();
-    }
+    io.emit("chat", me.name, msg, timeStr());
   });
 
   socket.on("disconnect", () => {
-    const name = users[socket.id];
-    if (name) {
-      io.emit("system", `${name}님이 퇴장했습니다.`);
-      delete users[socket.id];
-      io.emit("count", Object.keys(users).length);
-      broadcastUsers();
-    }
+    const me = usersById[socket.id];
+    if (!me) return;
 
-    typingUsers.delete(socket.id);
-    if (typingTimerById.has(socket.id)) {
-      clearTimeout(typingTimerById.get(socket.id));
-      typingTimerById.delete(socket.id);
-    }
-    broadcastTyping();
+    delete usersById[socket.id];
+    emitUsers();
+
+    io.emit("system", `[${timeStr()}] ◀ ${me.name}님이 퇴장했습니다.`);
   });
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, "0.0.0.0", () => {
-  console.log("서버 실행중");
-});
+server.listen(PORT, () => console.log("서버 실행중", PORT));
