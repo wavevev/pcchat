@@ -59,6 +59,24 @@
       opacity:.92;
       animation: flicker .14s infinite;
     }
+
+    /* ===== CRT 전원 켜짐 효과 ===== */
+
+    @keyframes crtBoot {
+      0% {
+        opacity: 0;
+        filter: brightness(2.5) blur(6px);
+      }
+      40% {
+        opacity: 1;
+        filter: brightness(1.8) blur(2px);
+      }
+      100% {
+        opacity: 1;
+        filter: brightness(1) blur(0);
+      }
+    }
+
     @keyframes flicker{
       0%{opacity:.90;}
       50%{opacity:.97;}
@@ -105,7 +123,7 @@
 
     /* ✅ 로그인 텍스트 줄간격 조금 줄임 */
     .loginTitle{
-        line-height: 1.55;
+        line-height: 1.45;
         font-size: 22px;
          margin: 0 0 18px 0;
     }
@@ -245,7 +263,7 @@
 
 <body>
   <!-- LOGIN -->
-  <div id="loginScreen">
+  <div id="loginScreen" style="animation: crtBoot 0.35s ease-out;">
     <div class="loginWrap">
       <div class="loginGifBox">
         <img src="./media/login.gif" alt="" />
