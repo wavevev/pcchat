@@ -29,17 +29,6 @@ function emitState(toSocket = null) {
   else io.emit("state", payload);
 }
 
-function enter(){
-  loginScreen.style.display = "none";
-  chatScreen.style.display  = "block";
-
-  chatScreen.classList.add("crt-enter"); // ✅ 추가
-
-  socket.emit("join", raw);
-  playLoginSound();
-}
-
-
 function stopTimer() {
   running = false;
   if (tickTimer) {
@@ -85,8 +74,7 @@ function resetTimer() {
 }
 
 function broadcastUsers() {
-  const list = Object.values(users);
-  io.emit("users", list);
+  io.emit("users", Object.values(users));
 }
 
 function broadcastTyping() {
@@ -120,11 +108,6 @@ function parseNickname(raw) {
 }
 
 io.on("connection", (socket) => {
-  // ✅ PING (신기 포인트: ms 표시)
-  socket.on("ping_ts", (t) => {
-    socket.emit("pong_ts", t);
-  });
-
   socket.on("req_users", () => {
     socket.emit("users", Object.values(users));
   });

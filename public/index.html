@@ -63,6 +63,32 @@
       100%{opacity:.92;}
     }
 
+    /* ✅ 로그인 -> 채팅 전환 CRT 연출 */
+    @keyframes crtSwitch {
+      0% {
+        transform: scaleY(0.02);
+        opacity: 0;
+        filter: brightness(3);
+      }
+      40% {
+        transform: scaleY(1.2);
+        opacity: 1;
+        filter: brightness(2);
+      }
+      70% {
+        transform: scaleY(0.95);
+        filter: brightness(1.4);
+      }
+      100% {
+        transform: scaleY(1);
+        filter: brightness(1);
+      }
+    }
+    .crt-enter {
+      animation: crtSwitch 0.28s ease-out;
+      transform-origin: center;
+    }
+
     #loginScreen, #chatScreen{
       position: fixed;
       inset: 0;
@@ -100,11 +126,14 @@
       image-rendering: pixelated;
       display:block;
     }
+
+    /* ✅ 요청: line-height 1.25 + font-size 20px */
     .loginTitle{
-      line-height: 1.35; /* 로그인 줄간격 */
-      font-size: 22px;
-      margin: 0 0 26px 0; /* 글자-입력창 간격 */
+      line-height: 1.25;
+      font-size: 20px;
+      margin: 0 0 26px 0;
     }
+
     #nickname{
       width: min(420px, 92vw);
       border: 2px solid var(--fg);
@@ -170,7 +199,7 @@
       margin: 6px 12px 0;
     }
 
-    /* 작은 상태줄(핑/진행상태) */
+    /* 상태줄(타이핑만) */
     #statusBar{
       flex: 0 0 auto;
       padding: 8px 22px 0;
@@ -180,11 +209,9 @@
       box-sizing: border-box;
       opacity: 0.95;
       display:flex;
-      gap: 14px;
       align-items:center;
     }
     #typingText{ flex: 1; }
-    #pingText{ white-space: nowrap; }
 
     #chatWrap{
       flex: 1 1 auto;
@@ -222,10 +249,8 @@
       padding: 14px 14px;
       font-size: 22px;
       outline:none;
-      caret-color: transparent; /* ✅ 기본 커서 숨김 */
+      caret-color: transparent;
     }
-
-    /* 글자 폭 측정용(보이지 않음) */
     #measure{
       position:absolute;
       left:-9999px;
@@ -234,8 +259,6 @@
       font-size: 22px;
       font-family:"DungGeunMo", monospace;
     }
-
-    /* 블록 커서 */
     #blockCaret{
       position:absolute;
       top: 50%;
@@ -259,7 +282,7 @@
       cursor:pointer;
     }
 
-    /* 접속자 패널(F2) */
+    /* F2 접속자 패널 */
     #userPanel{
       position: fixed;
       right: 18px;
@@ -328,7 +351,6 @@
 
       <div id="statusBar">
         <div id="typingText"></div>
-        <div id="pingText">PING --ms</div>
       </div>
 
       <div id="chatWrap" aria-live="polite"></div>
@@ -362,7 +384,6 @@
     const timerEl     = document.getElementById("timer");
 
     const typingText  = document.getElementById("typingText");
-    const pingText    = document.getElementById("pingText");
 
     const chatWrap    = document.getElementById("chatWrap");
     const msgInput    = document.getElementById("msgInput");
@@ -377,7 +398,7 @@
     let isAdmin = false;
     let locked = false;
 
-    // ===== 랜덤 접속음 (1번) =====
+    // 랜덤 접속음
     let audioCtx = null;
     function getCtx(){
       if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -395,21 +416,16 @@
     function playLoginSoundRandom(){
       const r = Math.random();
       if (r < 0.34){
-        // 모뎀 느낌 짧게
         beep(660, "square", 70);
         setTimeout(()=>beep(880, "square", 90), 80);
         setTimeout(()=>beep(740, "square", 70), 190);
       } else if (r < 0.67){
-        // 삐빅
         beep(900, "square", 120);
       } else {
-        // 삐비빅 (짧게 2번)
         beep(760, "square", 80);
         setTimeout(()=>beep(760, "square", 80), 120);
       }
     }
-
-    // 채팅 전송음(soft 딩)
     function playSendSound(){
       beep(500, "sine", 90);
     }
@@ -425,29 +441,21 @@
       scrollBottom();
     }
 
-    // ===== 블록 커서 위치 업데이트 (2번) =====
+    // 블록 커서 위치
     function updateBlockCaret(){
-      // input padding-left = 14px
       const paddingLeft = 14;
       const inputStyle = getComputedStyle(msgInput);
-      const font = inputStyle.font;
-      measureEl.style.font = font;
+      measureEl.style.font = inputStyle.font;
       measureEl.textContent = msgInput.value || "";
       const w = measureEl.getBoundingClientRect().width;
-
-      // caret x = padding + text width
-      const left = paddingLeft + w;
-      caretEl.style.left = left + "px";
-
-      // 비활성/잠금이면 숨김
+      caretEl.style.left = (paddingLeft + w) + "px";
       caretEl.style.opacity = (msgInput.disabled ? "0" : "");
     }
-
     msgInput.addEventListener("input", updateBlockCaret);
     msgInput.addEventListener("focus", updateBlockCaret);
     window.addEventListener("resize", updateBlockCaret);
 
-    // ===== 로그인 엔터 버그 방지 =====
+    // 로그인 엔터 버그 방지
     let nickComposing = false;
     nickEl.addEventListener("compositionstart", ()=> nickComposing = true);
     nickEl.addEventListener("compositionend", ()=> nickComposing = false);
@@ -458,6 +466,9 @@
 
       loginScreen.style.display = "none";
       chatScreen.style.display  = "block";
+
+      // ✅ 전환 연출 적용
+      chatScreen.classList.add("crt-enter");
 
       socket.emit("join", raw);
       playLoginSoundRandom();
@@ -479,7 +490,7 @@
     });
     enterBtn.addEventListener("click", enter);
 
-    // ===== send / typing =====
+    // send / typing
     let composing = false;
     msgInput.addEventListener("compositionstart", ()=> composing = true);
     msgInput.addEventListener("compositionend", ()=> composing = false);
@@ -528,13 +539,12 @@
     });
     msgInput.addEventListener("blur", ()=> socket.emit("typing", false));
 
-    // ===== F2 접속자 패널 (5번) =====
+    // F2 접속자 패널
     function toggleUserPanel(force){
       const show = (typeof force === "boolean") ? force : (userPanel.style.display !== "block");
       userPanel.style.display = show ? "block" : "none";
       if (show) socket.emit("req_users");
     }
-
     document.addEventListener("keydown", (e)=>{
       if (e.key === "F2"){
         e.preventDefault();
@@ -555,24 +565,9 @@
       });
     }
 
-    // ===== PING 표시 (신기 포인트) =====
-    function startPingLoop(){
-      setInterval(()=>{
-        if (!socket.connected) return;
-        const t = Date.now();
-        socket.emit("ping_ts", t);
-      }, 1500);
-    }
-    socket.on("pong_ts", (t)=>{
-      const rtt = Date.now() - Number(t);
-      pingText.textContent = `PING ${rtt}ms`;
-    });
-
-    // ===== socket events =====
+    // socket events
     socket.on("admin", ()=> { isAdmin = true; setInputEnabled(!locked || isAdmin); });
-
     socket.on("users", (list)=> renderUserList(list));
-
     socket.on("count", (n)=> { countEl.textContent = String(n); });
 
     socket.on("state", (st)=>{
@@ -591,14 +586,8 @@
     socket.on("typing", (text)=>{ typingText.textContent = text || ""; });
 
     socket.on("system", (msg)=>{ addLine(msg, "system"); });
-
     socket.on("notice", (_nick, msg)=>{ addLine(`[공지] ${msg}`, "notice"); });
-
     socket.on("chat", (nick, msg, time)=>{ addLine(`[${time}] ${nick} : ${msg}`, "chat"); });
-
-    socket.on("connect", ()=>{
-      startPingLoop();
-    });
 
     setInputEnabled(true);
   </script>
