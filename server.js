@@ -110,6 +110,12 @@ function parseNickname(raw) {
 io.on("connection", (socket) => {
   socket.on("req_users", () => {
     socket.emit("users", Object.values(users));
+
+  socket.on("requestUsers", () => {
+  socket.emit("userList", Object.values(users));
+
+  
+});
   });
 
   socket.on("join", (rawNickname) => {

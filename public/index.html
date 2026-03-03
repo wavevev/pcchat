@@ -63,7 +63,6 @@
       100%{opacity:.92;}
     }
 
-
     #loginScreen, #chatScreen{
       position: fixed;
       inset: 0;
@@ -80,7 +79,7 @@
       box-sizing:border-box;
     }
     .loginWrap{
-      width: min(520px, 100%);
+      width: min(420px, 100%);
       text-align:center;
     }
     .loginGifBox{
@@ -102,7 +101,6 @@
       display:block;
     }
 
-    /* ✅ 요청: line-height 1.25 + font-size 20px */
     .loginTitle{
       line-height: 1.25;
       font-size: 20px;
@@ -159,14 +157,14 @@
       display:grid;
       grid-template-columns: 1fr auto 1fr;
       align-items:center;
-      padding: 0 28px;
+      padding: 0 22px;
       box-sizing:border-box;
       font-size: 24px;
       letter-spacing: 1px;
     }
-    .topLeft{ justify-self:start; }
+    .topLeft{ justify-self:start; padding-left: 6px; }
     .topCenter{ justify-self:center; font-weight:700; letter-spacing: 4px; }
-    .topRight{ justify-self:end; }
+    .topRight{ justify-self:end; padding-right: 6px; }
     .timer{ color: var(--hi); }
     .topbarShadow{
       height: 12px;
@@ -204,20 +202,16 @@
     .chat{ color: var(--fg); }
 
     /* Chrome/Safari/Edge 스크롤바 */
-    #chatWrap::-webkit-scrollbar{
-      width: 14px;
-    }
+    #chatWrap::-webkit-scrollbar{ width: 14px; }
     #chatWrap::-webkit-scrollbar-track{
-      background: #00009b;          /* 배경색 */
-      border-left: 2px solid #fff;  /* PC통신 느낌 라인 */
+      background: #00009b;
+      border-left: 2px solid #fff;
     }
     #chatWrap::-webkit-scrollbar-thumb{
-      background: #0000db;          /* 상단바 음영색 느낌 */
+      background: #0000db;
       border: 2px solid #fff;
     }
-    #chatWrap::-webkit-scrollbar-thumb:hover{
-      background: #0000ff;
-    }
+    #chatWrap::-webkit-scrollbar-thumb:hover{ background: #0000ff; }
 
     /* INPUT + 블록 커서 */
     .inputbar{
@@ -229,10 +223,7 @@
       background: var(--bg);
       box-sizing:border-box;
     }
-    #msgWrap{
-      position: relative;
-      width: 100%;
-    }
+    #msgWrap{ position: relative; width: 100%; }
     #msgInput{
       width: 100%;
       border: 2px solid var(--fg);
@@ -241,11 +232,10 @@
       font-size: 22px;
       outline:none;
       caret-color: transparent;
+      border-right: 0; /* 경계선 겹침 제거 */
     }
     #measure{
-      position:absolute;
-      left:-9999px;
-      top:-9999px;
+      position:absolute; left:-9999px; top:-9999px;
       white-space: pre;
       font-size: 22px;
       font-family:"DungGeunMo", monospace;
@@ -267,18 +257,11 @@
 
     #sendBtn{
       border: 2px solid var(--fg);
+      border-left: 2px solid #fff;
       background: var(--bg);
       padding: 14px 22px;
       font-size: 22px;
       cursor:pointer;
-    }
-
-        /* 입력창-전송버튼 사이 경계선 한 줄로 만들기 */
-    #msgInput{
-      border-right: 0;           /* 입력창 오른쪽 테두리 제거 */
-    }
-    #sendBtn{
-      border-left: 2px solid #fff; /* 버튼 왼쪽 테두리는 유지(한 줄만 보이게) */
     }
 
     /* F2 접속자 패널 */
@@ -306,13 +289,35 @@
       font-size: 18px;
     }
 
+    /* 종료 오버레이(연출) */
+    #endOverlay{
+      position: fixed;
+      inset: 0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background: rgba(0,0,0,0.45);
+      z-index: 999;
+    }
+    #endOverlay .box{
+      border: 2px solid #fff;
+      padding: 18px 22px;
+      background: rgba(0,0,0,0.25);
+      color: #fff;
+      font-size: 22px;
+      line-height: 1.35;
+      text-align:center;
+      min-width: min(520px, 90vw);
+    }
+
     @media (max-width: 700px){
       :root{ --base:17px; --topbar-h:56px; }
-      .topbar{ font-size: 20px; padding: 0 20px; }
+      .topbar{ font-size: 20px; padding: 0 18px; }
       #statusBar{ padding: 8px 16px 0; }
       #chatWrap{ font-size: 18px; padding: 10px 16px 16px; }
       #msgInput, #sendBtn, #blockCaret, #measure{ font-size: 18px; }
       #msgInput{ padding: 12px; }
+      #sendBtn{ padding: 12px 18px; }
     }
   </style>
 </head>
@@ -371,6 +376,14 @@
     </div>
   </div>
 
+  <!-- 종료 연출 -->
+  <div id="endOverlay">
+    <div class="box" id="endBoxText">
+      CONNECTION CLOSED<br/>
+      입력이 잠금되었습니다.
+    </div>
+  </div>
+
   <script>
     const socket = io();
 
@@ -394,10 +407,13 @@
     const userPanel   = document.getElementById("userPanel");
     const userListEl  = document.getElementById("userList");
 
+    const endOverlay  = document.getElementById("endOverlay");
+    const endBoxText  = document.getElementById("endBoxText");
+
     let isAdmin = false;
     let locked = false;
 
-    // 랜덤 접속음
+    // 사운드
     let audioCtx = null;
     function getCtx(){
       if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -466,9 +482,6 @@
       loginScreen.style.display = "none";
       chatScreen.style.display  = "block";
 
-      // ✅ 전환 연출 적용
-      chatScreen.classList.add("crt-enter");
-
       socket.emit("join", raw);
       playLoginSoundRandom();
 
@@ -521,7 +534,7 @@
     });
     sendBtn.addEventListener("click", send);
 
-    // 타이핑 ping
+    // 타이핑
     let typingPingTimer = null;
     function pingTyping(){
       socket.emit("typing", true);
@@ -566,6 +579,7 @@
 
     // socket events
     socket.on("admin", ()=> { isAdmin = true; setInputEnabled(!locked || isAdmin); });
+
     socket.on("users", (list)=> renderUserList(list));
     socket.on("count", (n)=> { countEl.textContent = String(n); });
 
@@ -587,6 +601,29 @@
     socket.on("system", (msg)=>{ addLine(msg, "system"); });
     socket.on("notice", (_nick, msg)=>{ addLine(`[공지] ${msg}`, "notice"); });
     socket.on("chat", (nick, msg, time)=>{ addLine(`[${time}] ${nick} : ${msg}`, "chat"); });
+
+    // ✅ 관리자 /clear
+    socket.on("clear", ()=>{
+      chatWrap.textContent = "";
+      typingText.textContent = "";
+    });
+
+    // ✅ 킥 당했을 때 (영구강퇴 X)
+    socket.on("kicked", (reason)=>{
+      addLine(`[공지] ${reason || "퇴장되었습니다."}`, "system");
+      locked = true;
+      setInputEnabled(false);
+      endOverlay.style.display = "flex";
+      endBoxText.innerHTML = `KICKED<br/>${reason || "퇴장되었습니다."}`;
+    });
+
+    // ✅ 채팅 종료 연출
+    socket.on("ended", ()=>{
+      addLine(`[공지] 시간이 종료되었습니다.`, "system");
+      endOverlay.style.display = "flex";
+      endBoxText.innerHTML = `CONNECTION CLOSED<br/>입력이 잠금되었습니다.`;
+      // 서버에서 locked도 같이 내려오므로 여기선 연출만
+    });
 
     setInputEnabled(true);
   </script>
