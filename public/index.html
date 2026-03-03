@@ -33,20 +33,22 @@ body::after {
   pointer-events: none;
 }
 
-.screen {
+#loginScreen, #chatScreen {
   height: 100dvh;
+}
+
+#loginScreen {
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-.box {
+.login-box {
   border: 3px solid white;
   padding: 40px;
   width: 90%;
   max-width: 500px;
   text-align: center;
-  box-sizing: border-box;
 }
 
 input, button {
@@ -60,12 +62,11 @@ input {
   width: 100%;
   padding: 12px;
   margin-top: 20px;
-  box-sizing: border-box;
 }
 
 button {
   margin-top: 20px;
-  padding: 10px 30px;
+  padding: 8px 25px;
   cursor: pointer;
 }
 
@@ -95,19 +96,14 @@ button {
   padding: 12px;
 }
 
-#timer { color: yellow; }
 .system { color: yellow; }
 
-@media(max-width:600px){
-  #inputArea { flex-direction: column; }
-  button { width: 100%; }
-}
 </style>
 </head>
 <body>
 
-<div id="loginScreen" class="screen">
-  <div class="box">
+<div id="loginScreen">
+  <div class="login-box">
     X와의 채팅을 시작합니다.<br/>
     당신의 이름은?
     <input id="nickname" />
@@ -115,71 +111,70 @@ button {
   </div>
 </div>
 
-<div id="chatScreen" class="screen">
-  <div class="box" style="display:flex;flex-direction:column;height:100%;max-width:800px;">
-    <div id="topBar">
-      <div>9996</div>
-      <div>접속 <span id="count">0</span> | <span id="timer"></span></div>
-    </div>
-    <div id="chat"></div>
-    <div id="inputArea">
-      <input id="message" />
-      <button onclick="send()">전송</button>
-    </div>
+<div id="chatScreen">
+  <div id="topBar">
+    <div>9996</div>
+    <div>접속 <span id="count">0</span> | <span id="timer"></span></div>
+  </div>
+
+  <div id="chat"></div>
+
+  <div id="inputArea">
+    <input id="message" />
+    <button onclick="send()">전송</button>
   </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-let nickname = "";
-let isAdmin = false;
-let timeLeft = 120;
-let timerInterval;
+let nickname="";
+let isAdmin=false;
+let timeLeft=120;
 
-function beep(freq=600,duration=0.1){
-  const ctx = new (window.AudioContext||window.webkitAudioContext)();
-  const osc = ctx.createOscillator();
+const msgInput=document.getElementById("message");
+
+function retroBeep(type=1){
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const osc=ctx.createOscillator();
   osc.type='square';
-  osc.frequency.value=freq;
+  osc.frequency.value = type===1?500:900;
   osc.connect(ctx.destination);
   osc.start();
-  setTimeout(()=>{osc.stop();ctx.close();},duration*1000);
+  setTimeout(()=>{osc.stop();ctx.close();},100);
 }
 
 function enter(){
-  let raw = document.getElementById("nickname").value.trim();
+  let raw=document.getElementById("nickname").value.trim();
   if(!raw) return;
 
-  // 👑 몰래 관리자: 이름 앞에 9996 붙이면 관리자
   if(raw.startsWith("9996")){
-    isAdmin = true;
-    raw = raw.replace("9996","");
+    isAdmin=true;
+    raw=raw.replace("9996","");
   }
 
-  nickname = raw;
+  nickname=raw;
 
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("chatScreen").style.display="flex";
 
-  socket.emit("join", {nickname,isAdmin});
-
+  socket.emit("join",{nickname,isAdmin});
   addSystem("9996 > X와의 채팅을 시작합니다. 2분 동안 질문을 남겨주세요.");
   startTimer();
-  beep(400,0.2);
+  retroBeep(1);
 }
 
 function startTimer(){
-  const timerEl=document.getElementById("timer");
-  timerEl.textContent=`남은시간 ${timeLeft}s`;
+  const timer=document.getElementById("timer");
+  timer.textContent=`남은시간 ${timeLeft}s`;
 
-  timerInterval=setInterval(()=>{
+  const interval=setInterval(()=>{
     timeLeft--;
-    timerEl.textContent=`남은시간 ${timeLeft}s`;
+    timer.textContent=`남은시간 ${timeLeft}s`;
     if(timeLeft<=0){
-      clearInterval(timerInterval);
+      clearInterval(interval);
       if(!isAdmin){
-        document.getElementById("message").disabled=true;
+        msgInput.disabled=true;
         addSystem("⏳ 시간이 종료되었습니다.");
       }
     }
@@ -187,21 +182,27 @@ function startTimer(){
 }
 
 function send(){
-  const input=document.getElementById("message");
-  const msg=input.value.trim();
+  const msg=msgInput.value.trim();
   if(!msg) return;
 
   addChat(`${nickname} > ${msg}`);
   socket.emit("chat",msg);
-  input.value="";
-  beep(800,0.05);
+  msgInput.value="";
+  retroBeep(2);
 }
+
+msgInput.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    e.preventDefault();
+    send();
+  }
+});
 
 function addChat(text){
   const div=document.createElement("div");
   div.textContent=text;
   document.getElementById("chat").appendChild(div);
-  document.getElementById("chat").scrollTop=99999;
+  document.getElementById("chat").scrollTop=999999;
 }
 
 function addSystem(text){
@@ -214,6 +215,7 @@ function addSystem(text){
 socket.on("chat",msg=>addChat(msg));
 socket.on("system",msg=>addSystem(msg));
 socket.on("count",c=>document.getElementById("count").textContent=c);
+socket.on("init logs",logs=>logs.forEach(l=>addChat(l)));
 
 </script>
 </body>
