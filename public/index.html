@@ -259,6 +259,34 @@
       .inputbar{ gap: 12px; }
       .topbarHighlight, .topbarShadow{ margin-left: 10px; margin-right: 10px; }
     }
+
+    /* ===== CRT 화면 전환 효과 ===== */
+
+@keyframes crtSwitch {
+  0% {
+    transform: scaleY(0.02);
+    opacity: 0;
+    filter: brightness(3);
+  }
+  40% {
+    transform: scaleY(1.2);
+    opacity: 1;
+    filter: brightness(2);
+  }
+  70% {
+    transform: scaleY(0.95);
+    filter: brightness(1.4);
+  }
+  100% {
+    transform: scaleY(1);
+    filter: brightness(1);
+  }
+}
+
+.crt-enter {
+  animation: crtSwitch 0.28s ease-out;
+  transform-origin: center;
+}
   </style>
 </head>
 
