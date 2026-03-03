@@ -55,8 +55,8 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 
 server.listen(PORT, () => {
-  console.log("서버 실행중");
+  console.log("서버 실행중 on port " + PORT);
 });
