@@ -33,6 +33,8 @@ io.emit("system message", `◀ ${socket.nickname}님이 퇴장했습니다.`);
 });
 });
 
-server.listen(3000, () => {
-console.log("http://localhost:3000 에서 실행 중 💙");
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+  console.log("Server running");
 });
