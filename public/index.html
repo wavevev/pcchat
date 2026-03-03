@@ -460,6 +460,24 @@
       scrollBottom();
     }
 
+    function resetToLogin(){
+      // 화면/상태 초기화
+      chatWrap.textContent = "";
+      typingText.textContent = "";
+      endOverlay.style.display = "none";
+
+      isAdmin = false;
+      locked = false;
+
+      msgInput.value = "";
+      nickEl.value = "";
+
+      chatScreen.style.display = "none";
+      loginScreen.style.display = "flex";
+
+      setTimeout(()=> nickEl.focus(), 30);
+    }
+
     // 블록 커서 위치
     function updateBlockCaret(){
       const paddingLeft = 14;
@@ -606,26 +624,31 @@
     socket.on("notice", (_nick, msg)=>{ addLine(`[공지] ${msg}`, "notice"); });
     socket.on("chat", (nick, msg, time)=>{ addLine(`[${time}] ${nick} : ${msg}`, "chat"); });
 
-    // /clear
+    // /초기화
     socket.on("clear", ()=>{
       chatWrap.textContent = "";
       typingText.textContent = "";
     });
 
-    // /kick 당함 (영구 X)
+    // 퇴장 당함(영구 X) -> 로그인 화면 복귀
     socket.on("kicked", (reason)=>{
-      addLine(`[공지] ${reason || "퇴장되었습니다."}`, "system");
+      endOverlay.style.display = "flex";
+      endBoxText.innerHTML = `퇴장되었습니다.<br/>${reason || ""}`;
       locked = true;
       setInputEnabled(false);
-      endOverlay.style.display = "flex";
-      endBoxText.innerHTML = `KICKED<br/>${reason || "퇴장되었습니다."}`;
+
+      setTimeout(()=> {
+        resetToLogin();
+      }, 1200);
     });
 
-    // 종료 연출
-    socket.on("ended", ()=>{
-      addLine(`[공지] 시간이 종료되었습니다.`, "system");
+    // 종료 연출(시간 0 또는 /종료)
+    socket.on("ended", (reason)=>{
+      addLine(`[공지] ${reason || "채팅이 종료되었습니다."}`, "system");
       endOverlay.style.display = "flex";
-      endBoxText.innerHTML = `CONNECTION CLOSED<br/>입력이 잠금되었습니다.`;
+      endBoxText.innerHTML = `CONNECTION CLOSED<br/>${reason || "채팅이 종료되었습니다."}`;
+      // 필요하면 종료 시 로그인으로 자동 복귀도 가능:
+      // setTimeout(()=> resetToLogin(), 1500);
     });
 
     setInputEnabled(true);
