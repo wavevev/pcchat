@@ -224,25 +224,22 @@ io.on("connection", (socket) => {
       }
 
       if (cmd === "/팝업끄기") {
-      // ✅ 팝업 닫으면서 타이머도 자동 리셋 + 잠금 해제
-      resetTimer();
+        if (!arg) {
+          io.emit("hideOverlay");
+          socket.emit("system", `[공지] 모든 사용자의 팝업을 닫았습니다.`);
+          return;
+        }
 
-      if (!arg) {
-        io.emit("hideOverlay");
-        io.emit("system", `[공지] 팝업이 닫히고 시간이 리셋되었습니다.`);
+        const targetId = Object.keys(usersById).find((id) => usersById[id].name === arg);
+        if (!targetId) {
+          socket.emit("system", `[공지] "${arg}" 사용자를 찾을 수 없습니다.`);
+          return;
+        }
+
+        io.to(targetId).emit("hideOverlay");
+        socket.emit("system", `[공지] "${arg}" 사용자의 팝업을 닫았습니다.`);
         return;
       }
-
-      const targetId = Object.keys(usersById).find((id) => usersById[id].name === arg);
-      if (!targetId) {
-        socket.emit("system", `[공지] "${arg}" 사용자를 찾을 수 없습니다.`);
-        return;
-      }
-
-      io.to(targetId).emit("hideOverlay");
-      io.emit("system", `[공지] "${arg}" 사용자의 팝업을 닫고 시간이 리셋되었습니다.`);
-      return;
-    }
 
       if (cmd === "/정답") {
         if (!arg) {
@@ -263,17 +260,21 @@ io.on("connection", (socket) => {
       }
 
       if (cmd === "/선택") {
-        if (!answerState.correct) {
-          socket.emit("system", `[공지] 먼저 /정답 재회 또는 /정답 환승 으로 정답을 설정해주세요.`);
-          return;
-        }
-
-        answerState.selectionOpen = true;
-        answerState.adminName = me.name;
-
-        io.emit("notice", "", "최종 선택지를 고르세요.\n> 재회\n> 환승");
+      if (!answerState.correct) {
+        socket.emit("system", `[공지] 먼저 /정답 재회 또는 /정답 환승 으로 정답을 설정해주세요.`);
         return;
       }
+
+      // 팝업 닫기 + 타이머 리셋 + 잠금 해제
+      resetTimer();
+      io.emit("hideOverlay");
+
+      answerState.selectionOpen = true;
+      answerState.adminName = me.name;
+
+      io.emit("notice", "", "최종 선택지를 고르세요.\n> 재회\n> 환승");
+      return;
+    }
 
       socket.emit(
         "system",
