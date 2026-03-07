@@ -10,11 +10,9 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
-// ====== 설정 ======
-const ADMIN_PREFIX = "9996"; // 닉네임이 9996으로 시작하면 관리자(표시는 제거)
-let usersById = {};          // socket.id -> { name, isAdmin }
+const ADMIN_PREFIX = "9996";
+let usersById = {}; // socket.id -> { name, isAdmin }
 
-// 타이머(공유)
 let timer = {
   duration: 120,
   remaining: 120,
@@ -23,47 +21,72 @@ let timer = {
   interval: null,
 };
 
-// ===== 유틸 =====
+// 정답/선택 상태
+let answerState = {
+  correct: "",          // "재회" | "환승"
+  selectionOpen: false, // /선택 후 true
+  adminName: "",        // 표시용 관리자명
+};
+
+function resetAnswerState() {
+  answerState.correct = "";
+  answerState.selectionOpen = false;
+  answerState.adminName = "";
+}
+
 function timeStr() {
   const d = new Date();
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
 }
+
 function userList() {
   return Object.values(usersById).map((u) => u.name);
 }
+
 function countUsers() {
   return Object.keys(usersById).length;
 }
+
 function emitUsers() {
   io.emit("users", userList());
   io.emit("count", countUsers());
 }
+
 function emitState() {
-  io.emit("state", { remaining: timer.remaining, locked: timer.locked, running: timer.running });
+  io.emit("state", {
+    remaining: timer.remaining,
+    locked: timer.locked,
+    running: timer.running,
+  });
 }
+
 function stopTimer() {
   if (timer.interval) clearInterval(timer.interval);
   timer.interval = null;
   timer.running = false;
 }
+
 function lockRoomAndEnd(reason = "시간이 종료되었습니다.") {
   timer.locked = true;
   stopTimer();
   emitState();
   io.emit("locked", true);
-  io.emit("ended", reason); // 클라에서 관리자/일반유저 다르게 표시
+  io.emit("ended", reason);
 }
+
 function resetTimer() {
   stopTimer();
   timer.remaining = timer.duration;
   timer.locked = false;
+  resetAnswerState();
   emitState();
   io.emit("tick", timer.remaining);
   io.emit("locked", false);
   io.emit("system", `[공지] 타이머가 리셋되었습니다.`);
 }
+
 function startTimer() {
   if (timer.running) return;
   if (timer.locked) return;
@@ -72,8 +95,6 @@ function startTimer() {
   emitState();
 
   timer.interval = setInterval(() => {
-    if (!timer.running) return;
-
     timer.remaining -= 1;
     if (timer.remaining < 0) timer.remaining = 0;
 
@@ -84,12 +105,16 @@ function startTimer() {
     }
   }, 1000);
 }
+
 function fastForward(seconds) {
   const s = Math.max(1, Math.min(9999, Number(seconds) || 1));
   timer.remaining = Math.max(0, timer.remaining - s);
   io.emit("tick", timer.remaining);
   emitState();
-  if (timer.remaining === 0) lockRoomAndEnd("관리자에 의해 종료되었습니다.");
+
+  if (timer.remaining === 0) {
+    lockRoomAndEnd("관리자에 의해 종료되었습니다.");
+  }
 }
 
 io.on("connection", (socket) => {
@@ -97,9 +122,9 @@ io.on("connection", (socket) => {
     const raw = String(rawNick || "").trim();
     if (!raw) return;
 
-    // 관리자 숨김: 9996 접두사면 관리자 / 표시용 이름에서는 제거
     let isAdmin = false;
     let name = raw;
+
     if (raw.startsWith(ADMIN_PREFIX)) {
       isAdmin = true;
       name = raw.replace(/^9996\s*/, "").trim();
@@ -107,6 +132,7 @@ io.on("connection", (socket) => {
     }
 
     usersById[socket.id] = { name, isAdmin };
+
     if (isAdmin) socket.emit("admin");
 
     emitUsers();
@@ -118,13 +144,14 @@ io.on("connection", (socket) => {
     socket.emit("notice", "", "X와의 채팅을 시작합니다. 2분 동안 X에게 질문을 남겨주세요.");
   });
 
-  socket.on("req_users", () => socket.emit("users", userList()));
+  socket.on("req_users", () => {
+    socket.emit("users", userList());
+  });
 
   socket.on("typing", (v) => {
     const me = usersById[socket.id];
     if (!me) return;
-    if (v) socket.broadcast.emit("typing", `${me.name}님 입력중...`);
-    else socket.broadcast.emit("typing", "");
+    socket.broadcast.emit("typing", v ? `${me.name}님 입력중...` : "");
   });
 
   socket.on("chat", (msgRaw) => {
@@ -134,7 +161,7 @@ io.on("connection", (socket) => {
     const msg = String(msgRaw || "");
     const trimmed = msg.trim();
 
-    // ===== 관리자 한국어 명령어 =====
+    // ===== 관리자 명령어 =====
     if (me.isAdmin && trimmed.startsWith("/")) {
       const parts = trimmed.split(/\s+/);
       const cmd = parts[0];
@@ -151,6 +178,7 @@ io.on("connection", (socket) => {
           socket.emit("system", `[공지] 사용법: /퇴장 닉네임`);
           return;
         }
+
         const targetId = Object.keys(usersById).find((id) => usersById[id].name === arg);
         if (!targetId) {
           socket.emit("system", `[공지] "${arg}" 사용자를 찾을 수 없습니다.`);
@@ -160,6 +188,7 @@ io.on("connection", (socket) => {
           socket.emit("system", `[공지] 관리자는 퇴장시킬 수 없습니다.`);
           return;
         }
+
         io.to(targetId).emit("kicked", "관리자에 의해 퇴장되었습니다.");
         io.sockets.sockets.get(targetId)?.disconnect(true);
         return;
@@ -177,6 +206,7 @@ io.on("connection", (socket) => {
       }
 
       if (cmd === "/종료") {
+        resetAnswerState();
         io.emit("system", `[공지] 관리자에 의해 채팅이 종료되었습니다.`);
         lockRoomAndEnd("관리자에 의해 채팅이 종료되었습니다.");
         return;
@@ -185,7 +215,7 @@ io.on("connection", (socket) => {
       if (cmd === "/가속") {
         const n = parseInt(arg || "1", 10);
         if (Number.isNaN(n) || n <= 0) {
-          socket.emit("system", `[공지] 사용법: /가속 10 (초 단위)`);
+          socket.emit("system", `[공지] 사용법: /가속 10`);
           return;
         }
         fastForward(n);
@@ -193,32 +223,88 @@ io.on("connection", (socket) => {
         return;
       }
 
-      // ✅ 팝업 끄기: 전체 또는 특정 유저
       if (cmd === "/팝업끄기") {
         if (!arg) {
           io.emit("hideOverlay");
           socket.emit("system", `[공지] 모든 사용자의 팝업을 닫았습니다.`);
           return;
         }
+
         const targetId = Object.keys(usersById).find((id) => usersById[id].name === arg);
         if (!targetId) {
           socket.emit("system", `[공지] "${arg}" 사용자를 찾을 수 없습니다.`);
           return;
         }
+
         io.to(targetId).emit("hideOverlay");
         socket.emit("system", `[공지] "${arg}" 사용자의 팝업을 닫았습니다.`);
         return;
       }
 
+      if (cmd === "/정답") {
+        if (!arg) {
+          socket.emit("system", `[공지] 사용법: /정답 재회 또는 /정답 환승`);
+          return;
+        }
+        if (arg !== "재회" && arg !== "환승") {
+          socket.emit("system", `[공지] 정답은 "재회" 또는 "환승"만 가능합니다.`);
+          return;
+        }
+
+        answerState.correct = arg;
+        answerState.selectionOpen = false;
+        answerState.adminName = me.name;
+
+        socket.emit("system", `[공지] 정답이 "${arg}"로 설정되었습니다.`);
+        return;
+      }
+
+      if (cmd === "/선택") {
+        if (!answerState.correct) {
+          socket.emit("system", `[공지] 먼저 /정답 재회 또는 /정답 환승 으로 정답을 설정해주세요.`);
+          return;
+        }
+
+        answerState.selectionOpen = true;
+        answerState.adminName = me.name;
+
+        io.emit("notice", "", "최종 선택지를 고르세요.\n> 재회\n> 환승");
+        return;
+      }
+
       socket.emit(
         "system",
-        `[공지] 명령어: /시작 /리셋 /초기화 /퇴장 닉네임 /가속 10 /종료 /팝업끄기(또는 /팝업끄기 닉네임)`
+        `[공지] 명령어: /시작 /리셋 /초기화 /퇴장 닉네임 /가속 10 /종료 /팝업끄기 /정답 재회|환승 /선택`
       );
       return;
     }
 
-    // ✅ 일반 유저는 잠금이면 차단(관리자는 가능)
+    // 일반 유저는 잠금이면 차단, 관리자는 가능
     if (timer.locked && !me.isAdmin) return;
+
+    // ===== 최종 선택 판정 =====
+    if (
+      answerState.selectionOpen &&
+      !me.isAdmin &&
+      (trimmed === "재회" || trimmed === "환승")
+    ) {
+      if (trimmed === answerState.correct) {
+        io.emit(
+          "notice",
+          "",
+          "최종 커플 백선우♥이세웅\n축하드립니다. 스탬프를 받아가세요."
+        );
+      } else {
+        io.emit(
+          "notice",
+          "",
+          `최종 선택 ${answerState.adminName} > ${me.name}\n최종 커플 실패. 잠시 후 다시 도전해 주세요.`
+        );
+      }
+
+      answerState.selectionOpen = false;
+      return;
+    }
 
     io.emit("chat", me.name, msg, timeStr());
   });
