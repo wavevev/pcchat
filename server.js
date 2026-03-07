@@ -224,22 +224,25 @@ io.on("connection", (socket) => {
       }
 
       if (cmd === "/팝업끄기") {
-        if (!arg) {
-          io.emit("hideOverlay");
-          socket.emit("system", `[공지] 모든 사용자의 팝업을 닫았습니다.`);
-          return;
-        }
+      // ✅ 팝업 닫으면서 타이머도 자동 리셋 + 잠금 해제
+      resetTimer();
 
-        const targetId = Object.keys(usersById).find((id) => usersById[id].name === arg);
-        if (!targetId) {
-          socket.emit("system", `[공지] "${arg}" 사용자를 찾을 수 없습니다.`);
-          return;
-        }
-
-        io.to(targetId).emit("hideOverlay");
-        socket.emit("system", `[공지] "${arg}" 사용자의 팝업을 닫았습니다.`);
+      if (!arg) {
+        io.emit("hideOverlay");
+        io.emit("system", `[공지] 팝업이 닫히고 시간이 리셋되었습니다.`);
         return;
       }
+
+      const targetId = Object.keys(usersById).find((id) => usersById[id].name === arg);
+      if (!targetId) {
+        socket.emit("system", `[공지] "${arg}" 사용자를 찾을 수 없습니다.`);
+        return;
+      }
+
+      io.to(targetId).emit("hideOverlay");
+      io.emit("system", `[공지] "${arg}" 사용자의 팝업을 닫고 시간이 리셋되었습니다.`);
+      return;
+    }
 
       if (cmd === "/정답") {
         if (!arg) {
