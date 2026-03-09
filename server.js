@@ -109,6 +109,14 @@ function stopTimer() {
   timer.running = false;
 }
 
+function unlockRoom() {
+  timer.locked = false;
+  stopTimer();
+  emitState();
+  io.emit("locked", false);
+  io.emit("hideOverlay");
+}
+
 function lockRoomAndEnd(reason = "시간이 종료되었습니다.") {
   timer.locked = true;
   stopTimer();
@@ -187,7 +195,7 @@ io.on("connection", (socket) => {
     socket.emit("locked", timer.locked);
 
     io.emit("system", `[${getKSTTimeString()}] ▶ ${name}님이 접속했습니다.`);
-    socket.emit("notice", "", "X와의 채팅을 시작합니다. 2분 내로 X의 질문에 대답해 주세요.");
+    socket.emit("notice", "", "X와의 채팅을 시작합니다. X의 세 가지 질문에 대답해 주세요.");
   });
 
   socket.on("req_users", () => {
@@ -297,9 +305,31 @@ io.on("connection", (socket) => {
         return;
       }
 
+      if (cmd === "/성공") {
+        unlockRoom();
+        io.emit(
+          "notice",
+          "",
+          "최종 커플 백선우♥이세웅\n축하드립니다. 채팅룸 밖 관리자로부터 스탬프를 받아주세요."
+        );
+        io.emit("resultRefresh", { type: "success", delay: 10 });
+        return;
+      }
+
+      if (cmd === "/실패") {
+        unlockRoom();
+        io.emit(
+          "notice",
+          "",
+          "최종 커플 매칭 실패.\n잠시 후 다시 채팅룸을 찾아와 주세요."
+        );
+        io.emit("resultRefresh", { type: "fail", delay: 10 });
+        return;
+      }
+
       socket.emit(
         "system",
-        `[공지] 명령어: /시작 /리셋 /초기화 /퇴장 닉네임 /가속 10 /종료 /팝업끄기 /주완 /태빈`
+        `[공지] 명령어: /시작 /리셋 /초기화 /퇴장 닉네임 /가속 10 /종료 /팝업끄기 /주완 /태빈 /성공 /실패`
       );
       return;
     }

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>9996</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
@@ -433,7 +434,6 @@
     msgInput.addEventListener("focus", updateBlockCaret);
     window.addEventListener("resize", updateBlockCaret);
 
-    // 로그인 IME 버그 방지
     let nickComposing = false;
     nickEl.addEventListener("compositionstart", ()=> nickComposing = true);
     nickEl.addEventListener("compositionend", ()=> nickComposing = false);
@@ -494,7 +494,6 @@
     });
     sendBtn.addEventListener("click", send);
 
-    // 타이핑
     let typingTimer = null;
     function pingTyping(){
       socket.emit("typing", true);
@@ -513,7 +512,6 @@
 
     msgInput.addEventListener("blur", ()=> socket.emit("typing", false));
 
-    // 접속자 패널
     function toggleUserPanel(force){
       const show = (typeof force === "boolean") ? force : (userPanel.style.display !== "block");
       userPanel.style.display = show ? "block" : "none";
@@ -581,7 +579,6 @@
     socket.on("ended", (reason)=>{
       addLine(`[공지] ${reason || "채팅이 종료되었습니다."}`, "system");
 
-      // 관리자는 팝업 안 띄움
       if (!isAdmin){
         endOverlay.style.display = "flex";
         endBoxText.innerHTML = `CONNECTION CLOSED<br>${reason || "채팅이 종료되었습니다."}`;
@@ -590,6 +587,16 @@
 
     socket.on("hideOverlay", ()=>{
       endOverlay.style.display = "none";
+    });
+
+    socket.on("resultRefresh", ({ delay }) => {
+      if (isAdmin) return;
+
+      addLine(`[공지] ${delay || 10}초 후 화면이 새로고침됩니다.`, "notice");
+
+      setTimeout(() => {
+        window.location.reload();
+      }, (delay || 10) * 1000);
     });
 
     setInputEnabled(true);
